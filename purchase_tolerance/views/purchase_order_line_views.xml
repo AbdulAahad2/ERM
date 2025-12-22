@@ -1,0 +1,14 @@
+<odoo>
+    <record id="view_purchase_order_line_form_inherit_tolerance" model="ir.ui.view">
+        <field name="name">purchase.order.line.form.tolerance</field>
+        <field name="model">purchase.order</field> <!-- model of the parent form -->
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form[1]/sheet[1]/notebook[1]/page[@name='products']/field[@name='order_line']/list[1]/field[@name='product_id']" position="after">
+                <field name="tolerance_percent" optional="show"
+                       help="Maximum percentage above ordered quantity allowed for receipt. Leave empty for no tolerance."
+                       placeholder="Optional % tolerance"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

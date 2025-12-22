@@ -1,0 +1,89 @@
+<odoo>
+    <record id="view_custom_purchase_requisition_form" model="ir.ui.view">
+        <field name="name">custom.purchase.requisition.form</field>
+        <field name="model">custom.purchase.requisition</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_submit" string="Submit" type="object" invisible="state != 'draft'"/>
+                    <button name="action_approve" string="Approve" type="object" invisible="state == 'approved' or state =='rejected' or state == 'draft' or state == 'done' " />
+                    <button name="action_reject" string="Reject" type="object" invisible="state == 'approved' or state =='rejected' or state == 'draft' or state == 'done' " />
+                    <button name="create_rfq" string="Create RFQ" type="object" invisible="state != 'approved'"/>
+                    <button name="create_purchase_order" string="Create PO" type="object" invisible="state != 'approved'"/>
+                    <button name="action_done" string="Done" type="object" invisible="state != 'approved'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,approved,done"/>
+                </header>
+                <sheet>
+                    <field name="can_approve" invisible="1"/>
+                    <field name="purchase_count" invisible="1"/>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_purchase_orders"
+                                type="object"
+                                string="Purchase Orders"
+                                class="oe_stat_button"
+                                icon="fa-shopping-cart"
+                                   />
+                    </div>
+                    <group>
+                        <field name="name"/>
+                        <field name="requester_id"/>
+                        <field name="department_id"/>
+                        <field name="date_start"/>
+                        <field name="deadline_date"/>
+                        <field name="rejection_reason" invisible="state != 'rejected'"/>
+                    </group>
+                    <notebook>
+                        <page string="Lines">
+                            <field name="line_ids">
+                                <list editable="bottom">
+                                    <field name="product_id"/>
+                                    <field name="quantity"/>
+                                    <field name="product_uom_id"/>
+                                    <field name="price_unit" invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_custom_purchase_requisition_tree" model="ir.ui.view">
+        <field name="name">custom.purchase.requisition.tree</field>
+        <field name="model">custom.purchase.requisition</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="requester_id"/>
+                <field name="department_id"/>
+                <field name="date_start"/>
+                <field name="deadline_date"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_custom_purchase_requisition_reject_wizard" model="ir.ui.view">
+        <field name="name">custom.purchase.requisition.reject.wizard.form</field>
+        <field name="model">custom.purchase.requisition.reject.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Reject Requisition">
+                <group>
+                    <field name="reason" placeholder="Provide the reason for rejection..."/>
+                </group>
+                <footer>
+                    <button name="action_confirm" string="Confirm" type="object" class="btn-primary"/>
+                    <button string="Cancel" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_custom_purchase_requisition" model="ir.actions.act_window">
+        <field name="name">Purchase Requisitions</field>
+        <field name="res_model">custom.purchase.requisition</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_custom_purchase_requisition" name="Purchase Requisitions" action="action_custom_purchase_requisition" parent="purchase.menu_purchase_root" sequence="10"/>
+</odoo>

@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_custom_purchase_requisition_user,custom.purchase.requisition user,model_custom_purchase_requisition,base.group_user,1,1,1,0
+access_custom_purchase_requisition_manager,custom.purchase.requisition manager,model_custom_purchase_requisition,purchase.group_purchase_manager,1,1,1,1
+access_custom_purchase_requisition_line_user,custom.purchase.requisition.line user,model_custom_purchase_requisition_line,base.group_user,1,1,1,0
+access_custom_purchase_requisition_reject_wizard,access.custom.purchase.requisition.reject.wizard,model_custom_purchase_requisition_reject_wizard,base.group_user,1,1,1,1

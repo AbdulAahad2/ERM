@@ -1,0 +1,192 @@
+<odoo>
+    <template id="report_solar_quotation_pdf">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <!-- Use basic_layout to remove company header/footer, logo, page numbers -->
+                <t t-call="web.basic_layout">
+
+                    <div class="page" style="font-family: Arial, sans-serif; background: white; padding: 15px;">
+
+                        <!-- Styles -->
+                        <style>
+                            * {
+                                -webkit-print-color-adjust: exact !important;
+                                color-adjust: exact !important;
+                                print-color-adjust: exact !important;
+                            }
+
+                            body, html, .page {
+                                background: white !important;
+                                background-color: white !important;
+                            }
+
+                            @media print {
+                                * { -webkit-print-color-adjust: exact !important; }
+                                body, .page { background: white !important; }
+                            }
+
+                            .header-gradient {
+                                background: #312D81 !important;
+                                color: white !important;
+                            }
+
+                            .header-gradient div {
+                                background: inherit !important;
+                            }
+
+                            h3, [style*="color:#2E5BFF"] {
+                                color: #1E3F9F !important;
+                            }
+
+                            td[style*="background"], div[style*="background"] {
+                                -webkit-print-color-adjust: exact !important;
+                            }
+                        </style>
+
+                        <!-- Custom Header -->
+                        <div class="header-gradient" style="padding: 20px; text-align: center; border-radius: 12px; margin-bottom: 15px;">
+                            <h2 style="margin:0; font-size: 38px; color:white; font-weight:700;">Executive Proposal: Hybrid Solar System</h2>
+                            <p style="margin:5px 0 8px 0; font-size: 20px; color:#FFFFFF; opacity:0.9;">Sustainable Energies Enterprise | Comprehensive Energy Solution</p>
+                            <div style="height:2px; background:#2E5BFF; width:50%; margin: 0 auto 10px auto; opacity:0.7;"></div>
+
+                            <div style="background:#2E5BFF; padding: 8px 20px; border-radius: 8px; display: inline-block; font-size: 11px; margin-top: 5px; color: white;">
+                                <strong style="color: white;">Client:</strong> <span t-esc="doc.partner_id.name"/> |
+                                <strong style="color: white;">Date:</strong> <span t-field="doc.date_order" t-options='{"widget": "date"}'/> |
+                                <strong style="color: white;">Reference:</strong> <span t-esc="doc.name"/>
+                            </div>
+                        </div>
+
+                        <!-- Top Cards -->
+                        <div style="margin-bottom: 15px;">
+                            <table style="width:100%; border-spacing:8px;">
+                                <tr>
+                                    <t t-foreach="doc.get_top_cards()" t-as="card">
+                                        <td style="width:25%; background:#FFFFFF; padding:12px; border-radius:10px; text-align:center; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
+                                            <strong style="font-size:10px; color:#555555;"><span t-esc="card['label']"/></strong>
+                                            <h3 style="color:#2E5BFF; margin:6px 0; font-size:28px; font-weight:bold;"><span t-esc="card['value']"/></h3>
+                                            <small style="font-size:9px; color:#555555;"><span t-esc="card['desc']"/></small>
+                                        </td>
+                                    </t>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <!-- Financial Cards -->
+                        <div style="background:white; padding:12px; border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.1); margin-bottom:15px;">
+                            <h3 style="color:#2E5BFF; border-left:4px solid #2E5BFF; padding-left:8px; font-size:15px; margin:0 0 8px 0;">Financial Rationale &amp; Projected Value</h3>
+                            <table style="width:100%; border-spacing:8px;">
+                                <tr>
+                                    <t t-foreach="doc.get_financial_cards()" t-as="fin">
+                                        <td style="width:25%; background:#F4F5FF; padding:8px; border-radius:8px; text-align:center; border:1px solid #D9DBFF;">
+                                            <strong style="font-size:10px; color:#555555;"><span t-esc="fin['label']"/></strong>
+                                            <h3 style="color:#2E5BFF; margin:6px 0; font-size:24px; font-weight:bold;"><span t-esc="fin['value']"/></h3>
+                                            <small style="font-size:8px; color:#555555;"><span t-esc="fin['desc']"/></small>
+                                        </td>
+                                    </t>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <!-- Tech Specs + Guarantees -->
+                        <table style="width:100%; border-spacing:15px;">
+                            <tr>
+                                <td style="width:65%; vertical-align:top;">
+                                    <div style="background:white; padding:12px; border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.1);">
+                                        <h3 style="color:#2E5BFF; border-left:4px solid #2E5BFF; padding-left:8px; font-size:15px; margin:0 0 8px 0;">Technical Specification Summary</h3>
+                                        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                                            <thead style="background:#EEF4FF;">
+                                                <tr>
+                                                    <th style="padding:5px; text-align:left;">Component</th>
+                                                    <th style="padding:5px; text-align:left;">Qty</th>
+                                                    <th style="padding:5px; text-align:left;">Specification / Detail</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <t t-foreach="doc.order_line" t-as="line">
+                                                    <tr style="border-bottom:1px solid #ddd;">
+                                                        <td style="padding:5px;"><span t-esc="line.product_id.name"/></td>
+                                                        <td style="padding:5px;"><span t-esc="line.product_uom_qty"/> <span t-esc="line.product_uom.name"/></td>
+                                                        <td style="padding:5px; word-break:break-word;"><span t-esc="line.name"/></td>
+                                                    </tr>
+                                                </t>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </td>
+                                <td style="width:35%; vertical-align:top;">
+                                    <div style="background:white; padding:15px; border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.1);">
+                                        <h3 style="color:#2E5BFF; border-left:4px solid #2E5BFF; padding-left:8px; font-size:16px; margin-bottom:12px;">
+                                            Guarantees and Service Level
+                                        </h3>
+
+                                        <table style="width:100%; font-size:14px; border-collapse: separate; border-spacing:0 8px;">
+                                            <tr style="background:#F7F8FF; border-radius:6px;">
+                                                <td style="padding:8px 12px; background:#F7F8FF;">PV Performance Life</td>
+                                                <td style="padding:8px 12px; background:#F7F8FF; text-align:right;">
+                                                    <span t-esc="doc.pv_performance_life_years"/> Years
+                                                </td>
+                                            </tr>
+                                            <tr style="background:#F7F8FF; border-radius:6px;">
+                                                <td style="padding:8px 12px; background:#F7F8FF;">Inverter Warranty</td>
+                                                <td style="padding:8px 12px; background:#F7F8FF; text-align:right;">
+                                                    <span t-esc="doc.inverter_warranty_years"/> Years
+                                                </td>
+                                            </tr>
+                                            <tr style="background:#F7F8FF; border-radius:6px;">
+                                                <td style="padding:8px 12px; background:#F7F8FF;">Battery Warranty</td>
+                                                <td style="padding:8px 12px; background:#F7F8FF; text-align:right;">
+                                                    <span t-esc="doc.battery_warranty_years"/> Years
+                                                </td>
+                                            </tr>
+                                            <tr style="background:#F7F8FF; border-radius:6px;">
+                                                <td style="padding:8px 12px; background:#F7F8FF;">Installation Lead Time</td>
+                                                <td style="padding:8px 12px; background:#F7F8FF; text-align:right; font-weight:600; white-space: nowrap;">
+                                                    <t t-set="service_line" t-value="doc.order_line.filtered(lambda l: l.product_id.default_code == 'SERVICE' or 'Service' in l.product_id.name)"/>
+                                                    <t t-if="service_line">
+                                                        <t t-set="total_days" t-value="int(service_line[0].product_uom_qty)"/>
+                                                        <t t-set="weeks" t-value="total_days // 7"/>
+                                                        <t t-set="days" t-value="total_days % 7"/>
+                                                        <t t-if="weeks > 0 and days > 0">
+                                                            <t t-esc="weeks"/> Weeks &amp; <t t-esc="days"/> Days
+                                                        </t>
+                                                        <t t-elif="weeks > 0">
+                                                            <t t-esc="weeks"/> Weeks
+                                                        </t>
+                                                        <t t-elif="days > 0">
+                                                            <t t-esc="days"/> Days
+                                                        </t>
+                                                        <t t-else="">—</t>
+                                                    </t>
+                                                    <t t-else="">
+                                                       0
+                                                    </t>
+                                                </td>
+                                            </tr>
+                                        </table>
+
+                                        <div style="background:#E6E8FF; border:1px solid #4B53FF; border-radius:6px; padding:8px; margin-top:10px; font-size:10px;">
+                                            <strong>Manufacturer Warranty Note:</strong><br/>
+                                            All component warranties are provided and honored directly by the respective manufacturers/brand owners.
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <!-- Report Action -->
+    <report
+        id="action_report_solar_quotation"
+        model="sale.order"
+        string="Print Proposal"
+        report_type="qweb-pdf"
+        name="solar_quote_extention.report_solar_quotation_pdf"
+        file="solar_quote_extention.report_solar_quotation_pdf"
+        groups="sales_team.group_sale_salesman"
+    />
+</odoo>

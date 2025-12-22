@@ -1,0 +1,44 @@
+<odoo>
+    <record id="view_order_form_solar_extension" model="ir.ui.view">
+        <field name="name">sale.order.form.solar.extension</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+
+            <!-- =================================================================== -->
+            <!-- 1. Add "Print Proposal" button next to "Send by Email"              -->
+            <!-- =================================================================== -->
+            <xpath expr="//button[@name='action_quotation_send']" position="after">
+                <button name="print_custom_report_action"
+                        string="Print Proposal"
+                        type="object"
+                        class="btn-secondary"
+                        groups="base.group_user"
+                        data-hotkey="p"/>
+            </xpath>
+            <!-- =================================================================== -->
+            <!-- 3. New tab "Guarantees" – appears before "Other Information" tab   -->
+            <!-- =================================================================== -->
+            <xpath expr="//page[@name='other_information']" position="before">
+                <page string="Guarantees" name="guarantees">
+                    <group string="Warranties &amp; Guarantees">
+                        <field name="pv_performance_life_years"/>
+                        <field name="inverter_warranty_years"/>
+                        <field name="battery_warranty_years"/>
+                        <newline/>
+                        <field name="installed_capacity_kwp"/>
+                        <field name="est_annual_cost_saving" />
+                        <field name="projected_payback_period" />
+                        <newline/>
+                        <field name="product_performance_guarantee_years"/>
+                        <field name="inverter_rated_capacity_kwa"/>
+                        <field name="value_projection_million"/>
+                        <newline/>
+                        <field name="ENERGY_INDEPENDENCE_METRIC" string="Energy Independence Metric (%)"/>
+                    </group>
+                </page>
+            </xpath>
+
+        </field>
+    </record>
+</odoo>

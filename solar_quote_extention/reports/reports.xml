@@ -1,0 +1,14 @@
+<odoo>
+    <record id="action_report_solar_quotation" model="ir.actions.report">
+        <field name="name">Executive Solar Proposal</field>
+        <field name="model">sale.order</field>
+        <field name="report_type">qweb-pdf</field>
+
+        <field name="report_name">solar_quote_extention.report_solar_quotation_pdf</field>
+        <field name="report_file">solar_quote_extention.report_solar_quotation_pdf</field>
+
+        <field name="print_report_name">'Executive Solar Proposal - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>

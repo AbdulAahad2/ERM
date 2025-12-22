@@ -1,0 +1,79 @@
+<odoo>
+    <!-- Animal Schedule List View -->
+    <record id="view_vet_animal_schedule_list" model="ir.ui.view">
+        <field name="name">vet.animal.schedule.list</field>
+        <field name="model">vet.animal.schedule</field>
+        <field name="arch" type="xml">
+            <list decoration-info="status == 'draft'"
+                  decoration-success="status == 'confirmed'"
+                  decoration-danger="status == 'cancelled'">
+                <field name="name" string="Reference"/>
+                <field name="animal_id" string="Animal"/>
+                <field name="owner_id" string="Owner"/>
+                <field name="doctor_id" string="Doctor"/>
+                <field name="appointment_date" string="Appointment Date"/>
+                <field name="status" string="Status"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Animal Schedule Form View -->
+    <record id="view_vet_animal_schedule_form" model="ir.ui.view">
+        <field name="name">vet.animal.schedule.form</field>
+        <field name="model">vet.animal.schedule</field>
+        <field name="arch" type="xml">
+            <form string="Animal Appointment">
+                <header>
+                    <button name="action_confirm" type="object" string="Confirm"
+                            invisible="status != 'draft'"/>
+                    <button name="action_done" type="object" string="Done"
+                            invisible="status != 'confirmed'"/>
+                    <button name="action_cancel" type="object" string="Cancel"
+                            invisible="not (status in ('draft','confirmed'))"/>
+                    <button name="action_reset_draft" type="object" string="Reset to Draft"
+                            invisible="not (status in ('cancelled','completed'))"/>
+                    <field name="status" widget="statusbar" statusbar_visible="draft,confirmed,completed,cancelled"/>
+                    <field name="status" widget="statusbar" statusbar_visible="draft,confirmed,completed,cancelled"/>
+
+                </header>
+                <sheet>
+                    <group string="Appointment Details">
+                        <field name="animal_id" options="{'no_create': True}"/>
+                        <field name="owner_id" readonly="1"/>
+                        <field name="doctor_id" options="{'no_create': True}"/>
+                        <field name="appointment_date" required="1"/>
+                    </group>
+                    <group string="Additional Information">
+                        <field name="reason" placeholder="e.g. Routine checkup"/>
+                        <field name="notes" placeholder="Enter additional notes..."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Animal Schedule Calendar View -->
+    <record id="view_vet_animal_schedule_calendar" model="ir.ui.view">
+        <field name="name">vet.animal.schedule.calendar</field>
+        <field name="model">vet.animal.schedule</field>
+        <field name="arch" type="xml">
+            <calendar date_start="appointment_date" color="status" mode="month">
+                <field name="name" string="Reference"/>
+                <field name="animal_id" string="Animal"/>
+                <field name="doctor_id" string="Doctor"/>
+                <field name="status" string="Status"/>
+            </calendar>
+        </field>
+    </record>
+
+    <!-- Action for Animal Schedule -->
+    <record id="action_vet_animal_schedule" model="ir.actions.act_window">
+        <field name="name">Appointments</field>
+        <field name="res_model">vet.animal.schedule</field>
+        <field name="view_mode">list,form,calendar</field>
+        <field name="help" type="html">
+            <p class="oe_view_nocontent_create">Click to create a new appointment.</p>
+            <p>Manage veterinary appointments, including animal, doctor, and date details.</p>
+        </field>
+    </record>
+</odoo>

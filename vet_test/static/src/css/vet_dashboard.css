@@ -1,0 +1,1433 @@
+/* ========================================
+   ENHANCED VET DASHBOARD - MODERN & COLORFUL
+   Professional Design with Vibrant Colors
+   ======================================== */
+
+/* Enhanced CSS Variables */
+:root {
+  /* Base Colors */
+  --vet-card-bg: #ffffff;
+  --vet-card-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --vet-card-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.15);
+  --vet-text-primary: #1a202c;
+  --vet-text-secondary: #4a5568;
+  --vet-text-muted: #718096;
+  --vet-border-color: #e2e8f0;
+  --vet-bg-body: #f7fafc;
+
+  /* Vibrant Card Colors */
+  --vet-primary: #5b67e4;
+  --vet-primary-dark: #4451d0;
+  --vet-primary-light: #eef0ff;
+  --vet-primary-glow: rgba(91, 103, 228, 0.2);
+
+  --vet-success: #10b981;
+  --vet-success-dark: #059669;
+  --vet-success-light: #d1fae5;
+  --vet-success-glow: rgba(16, 185, 129, 0.2);
+
+  --vet-warning: #f59e0b;
+  --vet-warning-dark: #d97706;
+  --vet-warning-light: #fef3c7;
+  --vet-warning-glow: rgba(245, 158, 11, 0.2);
+
+  --vet-danger: #ef4444;
+  --vet-danger-dark: #dc2626;
+  --vet-danger-light: #fee2e2;
+  --vet-danger-glow: rgba(239, 68, 68, 0.2);
+
+  --vet-info: #06b6d4;
+  --vet-info-dark: #0891b2;
+  --vet-info-light: #cffafe;
+  --vet-info-glow: rgba(6, 182, 212, 0.2);
+
+  --vet-purple: #8b5cf6;
+  --vet-purple-dark: #7c3aed;
+  --vet-purple-light: #ede9fe;
+  --vet-purple-glow: rgba(139, 92, 246, 0.2);
+}
+
+/* Dark Mode Support */
+.o_dark .o_kanban_dashboard,
+[data-color-scheme="dark"] .o_kanban_dashboard,
+body.o_dark .o_kanban_dashboard {
+  --vet-card-bg: #1e293b;
+  --vet-card-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --vet-card-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.6);
+  --vet-text-primary: #f1f5f9;
+  --vet-text-secondary: #cbd5e1;
+  --vet-text-muted: #94a3b8;
+  --vet-border-color: #334155;
+  --vet-bg-body: #0f172a;
+}
+
+/* ========================================
+   DASHBOARD LAYOUT
+   ======================================== */
+
+.o_vet_dashboard_pro {
+  padding: 24px;
+  /* background: var(--vet-bg-body); */
+  min-height: 100vh;
+}
+
+.o_vet_dashboard_pro .o_kanban_record {
+  margin: 14px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ========================================
+   ENHANCED METRIC CARDS
+   ======================================== */
+
+.vet_card_modern {
+  background: var(--vet-card-bg);
+  border-radius: 20px;
+  box-shadow: var(--vet-card-shadow);
+  overflow: hidden;
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid transparent;
+  position: relative;
+}
+
+.vet_card_modern::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 20px;
+  padding: 2px;
+  background: linear-gradient(135deg, transparent, transparent);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.vet_card_modern:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: var(--vet-card-shadow-hover);
+}
+
+.vet_card_modern:hover::before {
+  opacity: 1;
+}
+
+/* Vibrant Gradient Headers */
+.card_header {
+  padding: 28px 24px;
+  position: relative;
+  overflow: hidden;
+  min-height: 100px;
+}
+
+.card_header::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.15) 0%,
+    transparent 70%
+  );
+  animation: shimmer 4s infinite ease-in-out;
+}
+
+.card_header::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+@keyframes shimmer {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-30px, -30px) scale(1.1);
+  }
+}
+
+/* Enhanced Gradient Variations */
+.gradient_primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 8px 24px var(--vet-primary-glow);
+}
+
+.gradient_success {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  box-shadow: 0 8px 24px var(--vet-success-glow);
+}
+
+.gradient_warning {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  box-shadow: 0 8px 24px var(--vet-warning-glow);
+}
+
+.gradient_danger {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  box-shadow: 0 8px 24px var(--vet-danger-glow);
+}
+
+.gradient_info {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  box-shadow: 0 8px 24px var(--vet-info-glow);
+}
+
+.gradient_purple {
+  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+  box-shadow: 0 8px 24px var(--vet-purple-glow);
+}
+
+/* Modern Icon Container */
+.icon_container {
+  width: 64px;
+  height: 64px;
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.vet_card_modern:hover .icon_container {
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+}
+
+.icon_container i {
+  font-size: 32px;
+  color: #ffffff;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+/* Enhanced Trend Badge */
+.trend_badge {
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(12px);
+  padding: 8px 16px;
+  border-radius: 24px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* Enhanced Card Body */
+.card_body {
+  padding: 28px 24px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.01) 100%);
+}
+
+.card_title_badge {
+  color: black;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.metric_label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--vet-text-secondary);
+  margin-bottom: 10px;
+}
+
+.metric_value {
+  font-size: 42px;
+  font-weight: 800;
+  background: linear-gradient(
+    135deg,
+    var(--vet-primary) 0%,
+    var(--vet-purple) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 6px;
+  line-height: 1.1;
+  letter-spacing: -1px;
+}
+
+.metric_subtitle {
+  font-size: 14px;
+  color: var(--vet-text-muted);
+  margin-bottom: 20px;
+  font-weight: 500;
+}
+
+.card_divider {
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--vet-border-color) 20%,
+    var(--vet-border-color) 80%,
+    transparent 100%
+  );
+  margin: 20px 0;
+}
+
+.extra_info {
+  font-size: 12px;
+  color: var(--vet-text-secondary);
+  display: flex;
+  align-items: center;
+  padding: 14px 18px;
+  background: var(--vet-primary-light);
+  border-radius: 12px;
+  margin-top: auto;
+  border: 2px solid var(--vet-primary);
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.extra_info:hover {
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px var(--vet-primary-glow);
+}
+
+.extra_info i {
+  color: var(--vet-primary);
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+/* Enhanced Card Footer */
+.card_footer {
+  padding: 18px 24px;
+  border-top: 2px solid var(--vet-border-color);
+  /* background: linear-gradient(180deg, var(--vet-bg-body) 0%, transparent 100%); */
+}
+
+.view_details {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--vet-primary);
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.vet_card_modern:hover .view_details {
+  color: var(--vet-primary-dark);
+}
+
+.vet_card_modern:hover .view_details i {
+  transform: translateX(6px);
+}
+
+.view_details i {
+  transition: transform 0.3s ease;
+  margin-left: 6px;
+}
+
+/* ========================================
+   ENHANCED INVOICE CARD
+   ======================================== */
+
+.vet_card_invoice {
+  background: var(--vet-card-bg);
+  border-radius: 20px;
+  box-shadow: var(--vet-card-shadow);
+  overflow: hidden;
+  min-height: 360px;
+  border: 2px solid transparent;
+  transition: all 0.4s ease;
+  position: relative;
+}
+
+.vet_card_invoice::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(from 0deg, transparent, #667eea, transparent);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  animation: rotate 4s linear infinite;
+  z-index: 0;
+}
+
+@keyframes rotate {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.vet_card_invoice:hover::before {
+  opacity: 0.1;
+}
+
+.vet_card_invoice:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 16px 48px rgba(102, 126, 234, 0.3);
+  border-color: #667eea;
+}
+
+.invoice_header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 28px 24px;
+  color: white;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.invoice_header::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 150%;
+  height: 200%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.15) 0%,
+    transparent 70%
+  );
+  animation: shimmer 4s infinite;
+}
+
+.invoice_icon {
+  width: 56px;
+  height: 56px;
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.invoice_icon i {
+  font-size: 28px;
+  color: white;
+}
+
+.invoice_header h4 {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.subtitle_text {
+  font-size: 12px;
+  opacity: 0.95;
+  font-weight: 500;
+}
+
+/* Enhanced Invoice Body */
+.invoice_body {
+  padding: 28px 24px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Enhanced Stat Cards */
+.stat_card {
+  padding: 20px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat_card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.stat_card:hover::before {
+  left: 100%;
+}
+
+.stat_card:hover {
+  transform: translateX(4px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.stat_paid {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  border-color: var(--vet-success);
+}
+
+.stat_pending {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-color: var(--vet-warning);
+}
+
+.stat_icon_wrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.stat_paid .stat_icon_wrapper {
+  background: linear-gradient(
+    135deg,
+    var(--vet-success) 0%,
+    var(--vet-success-dark) 100%
+  );
+  color: white;
+}
+
+.stat_pending .stat_icon_wrapper {
+  background: linear-gradient(
+    135deg,
+    var(--vet-warning) 0%,
+    var(--vet-warning-dark) 100%
+  );
+  color: white;
+}
+
+.stat_content {
+  white-space: nowrap;
+  flex: 1;
+}
+
+.stat_label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--vet-text-secondary);
+  margin-bottom: 6px;
+  letter-spacing: 0.8px;
+}
+
+.stat_value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--vet-text-primary);
+  line-height: 1;
+}
+
+/* Enhanced Total Section */
+.total_section {
+  margin-top: 24px;
+  padding: 24px;
+  background: linear-gradient(
+    135deg,
+    var(--vet-primary-light) 0%,
+    rgba(102, 126, 234, 0.1) 100%
+  );
+  border-radius: 16px;
+  border: 3px solid var(--vet-primary);
+  position: relative;
+  overflow: hidden;
+}
+
+.total_section::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle,
+    rgba(102, 126, 234, 0.1) 0%,
+    transparent 70%
+  );
+  animation: shimmer 3s infinite;
+}
+
+.total_label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--vet-text-secondary);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.total_count {
+  font-size: 32px;
+  font-weight: 800;
+  background: linear-gradient(
+    135deg,
+    var(--vet-primary) 0%,
+    var(--vet-purple) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+}
+
+.revenue_badge {
+  background: linear-gradient(
+    135deg,
+    var(--vet-primary) 0%,
+    var(--vet-primary-dark) 100%
+  );
+  color: white;
+  padding: 10px 20px;
+  border-radius: 24px;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px var(--vet-primary-glow);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Enhanced Invoice Footer */
+.invoice_footer {
+  padding: 18px 24px;
+  border-top: 2px solid var(--vet-border-color);
+  background: var(--vet-bg-body);
+  font-size: 12px;
+  color: var(--vet-text-secondary);
+  text-align: center;
+  font-weight: 600;
+  position: relative;
+  z-index: 1;
+}
+
+/* ========================================
+   ENHANCED CHART CARD
+   ======================================== */
+
+.vet_card_chart {
+  background: var(--vet-card-bg);
+  border-radius: 20px;
+  box-shadow: var(--vet-card-shadow);
+  overflow: hidden;
+  min-height: 340px;
+  border: 2px solid transparent;
+  transition: all 0.4s ease;
+}
+
+.vet_card_chart:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 16px 48px rgba(240, 147, 251, 0.3);
+  border-color: #f093fb;
+}
+
+.chart_header {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  padding: 28px 24px;
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.chart_header::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.15) 0%,
+    transparent 70%
+  );
+  animation: shimmer 4s infinite;
+}
+
+.chart_icon {
+  width: 56px;
+  height: 56px;
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.chart_icon i {
+  font-size: 28px;
+  color: white;
+}
+
+.chart_header h4 {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.chart_subtitle {
+  font-size: 12px;
+  opacity: 0.95;
+  font-weight: 500;
+}
+
+.chart_body {
+  padding: 24px 24px;
+}
+
+.species_count_wrapper {
+  text-align: center;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: linear-gradient(
+    135deg,
+    var(--vet-purple-light) 0%,
+    rgba(139, 92, 246, 0.1) 100%
+  );
+  border-radius: 16px;
+  border: 2px solid var(--vet-purple);
+}
+
+.species_count {
+  font-size: 56px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  letter-spacing: -2px;
+}
+
+.species_label {
+  font-size: 15px;
+  color: var(--vet-text-secondary);
+  margin-top: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+/* Enhanced Species Breakdown */
+.species_breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.species_item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 18px;
+  background: var(--vet-bg-body);
+  border-radius: 12px;
+  border: 2px solid var(--vet-border-color);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.species_item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(
+    180deg,
+    var(--vet-primary) 0%,
+    var(--vet-purple) 100%
+  );
+  transform: scaleY(0);
+  transition: transform 0.3s ease;
+}
+
+.species_item:hover {
+  transform: translateX(6px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  border-color: var(--vet-primary);
+}
+
+.species_item:hover::before {
+  transform: scaleY(1);
+}
+
+.species_info {
+  display: flex;
+  align-items: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--vet-text-primary);
+}
+
+.species_info i {
+  font-size: 18px;
+  margin-right: 10px;
+}
+
+.species_count_small {
+  font-size: 22px;
+  font-weight: 800;
+  background: linear-gradient(
+    135deg,
+    var(--vet-primary) 0%,
+    var(--vet-purple) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.chart_footer {
+  padding: 18px 24px;
+  border-top: 2px solid var(--vet-border-color);
+  background: var(--vet-bg-body);
+  text-align: center;
+  font-size: 12px;
+  color: var(--vet-primary);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ========================================
+   ENHANCED STATS CARD
+   ======================================== */
+
+.vet_card_stats {
+  background: var(--vet-card-bg);
+  border-radius: 20px;
+  box-shadow: var(--vet-card-shadow);
+  overflow: hidden;
+  min-height: 320px;
+  border: 2px solid transparent;
+  transition: all 0.4s ease;
+}
+
+.vet_card_stats:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 16px 48px rgba(79, 172, 254, 0.3);
+  border-color: #4facfe;
+}
+
+.stats_header {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  padding: 28px 24px;
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.stats_header::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.15) 0%,
+    transparent 70%
+  );
+  animation: shimmer 4s infinite;
+}
+
+.stats_icon {
+  width: 56px;
+  height: 56px;
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.stats_icon i {
+  font-size: 28px;
+  color: white;
+}
+
+.stats_header h4 {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.stats_subtitle {
+  font-size: 12px;
+  opacity: 0.95;
+  font-weight: 500;
+}
+
+.stats_body {
+  padding: 28px 24px;
+}
+
+.total_services_wrapper {
+  text-align: center;
+  margin-bottom: 24px;
+  padding: 20px;
+  background: linear-gradient(
+    135deg,
+    var(--vet-info-light) 0%,
+    rgba(6, 182, 212, 0.1) 100%
+  );
+  border-radius: 16px;
+  border: 2px solid var(--vet-info);
+}
+
+.total_services_count {
+  font-size: 56px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  letter-spacing: -2px;
+}
+
+.total_services_label {
+  font-size: 15px;
+  color: var(--vet-text-secondary);
+  margin-top: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+/* Enhanced Service Type Cards */
+.service_type_card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    var(--vet-primary) 0%,
+    var(--vet-purple) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 0;
+}
+
+.service_type_card:hover::before {
+  opacity: 0.05;
+}
+
+.service_type_card:hover {
+  border-color: var(--vet-primary);
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 8px 24px rgba(91, 103, 228, 0.2);
+}
+
+.service_type_card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.service_type_card i {
+  font-size: 32px;
+  margin-bottom: 12px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+  transition: transform 0.3s ease;
+}
+
+.service_type_card:hover i {
+  transform: scale(1.2) rotate(10deg);
+}
+
+.service_type_count {
+  font-size: 28px;
+  font-weight: 800;
+  background: linear-gradient(
+    135deg,
+    var(--vet-primary) 0%,
+    var(--vet-purple) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 10px 0;
+}
+
+.service_type_label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--vet-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.stats_footer {
+  padding: 18px 24px;
+  border-top: 2px solid var(--vet-border-color);
+  background: var(--vet-bg-body);
+  text-align: center;
+  font-size: 12px;
+  color: var(--vet-info);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ========================================
+   LOADING & HOVER EFFECTS
+   ======================================== */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.o_kanban_record {
+  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.o_kanban_record:nth-child(1) {
+  animation-delay: 0.05s;
+}
+.o_kanban_record:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.o_kanban_record:nth-child(3) {
+  animation-delay: 0.15s;
+}
+.o_kanban_record:nth-child(4) {
+  animation-delay: 0.2s;
+}
+.o_kanban_record:nth-child(5) {
+  animation-delay: 0.25s;
+}
+.o_kanban_record:nth-child(6) {
+  animation-delay: 0.3s;
+}
+.o_kanban_record:nth-child(7) {
+  animation-delay: 0.35s;
+}
+.o_kanban_record:nth-child(8) {
+  animation-delay: 0.4s;
+}
+.o_kanban_record:nth-child(9) {
+  animation-delay: 0.45s;
+}
+.o_kanban_record:nth-child(10) {
+  animation-delay: 0.5s;
+}
+
+/* ========================================
+   ADDITIONAL ENHANCEMENTS
+   ======================================== */
+
+/* Glow effect on hover */
+.vet_card_modern:hover .gradient_primary,
+.vet_card_modern:hover .gradient_success,
+.vet_card_modern:hover .gradient_warning,
+.vet_card_modern:hover .gradient_danger,
+.vet_card_modern:hover .gradient_info,
+.vet_card_modern:hover .gradient_purple {
+  filter: brightness(1.1);
+}
+
+/* Text selection styling */
+::selection {
+  background: var(--vet-primary);
+  color: white;
+}
+
+::-moz-selection {
+  background: var(--vet-primary);
+  color: white;
+}
+
+/* Smooth scrolling */
+.o_vet_dashboard_pro {
+  scroll-behavior: smooth;
+}
+
+/* Focus styles for accessibility */
+.vet_card_modern:focus-within,
+.vet_card_invoice:focus-within,
+.vet_card_chart:focus-within,
+.vet_card_stats:focus-within {
+  outline: 3px solid var(--vet-primary);
+  outline-offset: 4px;
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+@media (max-width: 1400px) {
+  .o_vet_dashboard_pro .o_kanban_record {
+    margin: 12px;
+  }
+
+  .metric_value {
+    font-size: 36px;
+  }
+
+  .species_count,
+  .total_services_count {
+    font-size: 48px;
+  }
+}
+
+@media (max-width: 992px) {
+  .o_vet_dashboard_pro {
+    padding: 16px;
+  }
+
+  .metric_value {
+    font-size: 32px;
+  }
+
+  .icon_container {
+    width: 56px;
+    height: 56px;
+  }
+
+  .icon_container i {
+    font-size: 28px;
+  }
+}
+
+@media (max-width: 768px) {
+  .o_vet_dashboard_pro {
+    padding: 12px;
+  }
+
+  .o_vet_dashboard_pro .o_kanban_record {
+    margin: 8px;
+  }
+
+  .metric_value {
+    font-size: 28px;
+  }
+
+  .vet_card_modern,
+  .vet_card_invoice,
+  .vet_card_chart,
+  .vet_card_stats {
+    min-height: 220px;
+  }
+
+  .species_count,
+  .total_services_count {
+    font-size: 40px;
+  }
+
+  .card_header,
+  .invoice_header,
+  .chart_header,
+  .stats_header {
+    padding: 20px;
+  }
+
+  .card_body,
+  .invoice_body,
+  .chart_body,
+  .stats_body {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 576px) {
+  .metric_value {
+    font-size: 24px;
+  }
+
+  .species_count,
+  .total_services_count {
+    font-size: 36px;
+  }
+
+  .icon_container {
+    width: 48px;
+    height: 48px;
+  }
+
+  .icon_container i {
+    font-size: 24px;
+  }
+
+  .trend_badge {
+    font-size: 10px;
+    padding: 6px 12px;
+  }
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+
+@media print {
+  .vet_card_modern,
+  .vet_card_invoice,
+  .vet_card_chart,
+  .vet_card_stats {
+    page-break-inside: avoid;
+    box-shadow: none !important;
+    border: 2px solid #ddd !important;
+  }
+
+  .card_header,
+  .invoice_header,
+  .chart_header,
+  .stats_header {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+  }
+
+  .vet_card_modern:hover,
+  .vet_card_invoice:hover,
+  .vet_card_chart:hover,
+  .vet_card_stats:hover {
+    transform: none;
+  }
+}
+
+/* ========================================
+   DARK MODE SPECIFIC ENHANCEMENTS
+   ======================================== */
+
+.o_dark .vet_card_modern,
+.o_dark .vet_card_invoice,
+.o_dark .vet_card_chart,
+.o_dark .vet_card_stats {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.o_dark .vet_card_modern:hover,
+.o_dark .vet_card_invoice:hover,
+.o_dark .vet_card_chart:hover,
+.o_dark .vet_card_stats:hover {
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8);
+}
+
+.o_dark .extra_info {
+  background: rgba(91, 103, 228, 0.15);
+  border-color: var(--vet-primary);
+}
+
+.o_dark .stat_paid {
+  background: rgba(16, 185, 129, 0.15);
+}
+
+.o_dark .stat_pending {
+  background: rgba(245, 158, 11, 0.15);
+}
+
+.o_dark .species_count_wrapper,
+.o_dark .total_services_wrapper {
+  background: rgba(139, 92, 246, 0.15);
+}
+
+.o_dark .total_section {
+  background: rgba(91, 103, 228, 0.15);
+}
+
+/* ========================================
+   ACCESSIBILITY ENHANCEMENTS
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .vet_card_modern,
+  .vet_card_invoice,
+  .vet_card_chart,
+  .vet_card_stats {
+    border: 3px solid currentColor;
+  }
+
+  .card_header,
+  .invoice_header,
+  .chart_header,
+  .stats_header {
+    border-bottom: 3px solid rgba(255, 255, 255, 0.5);
+  }
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+.vet_pulse {
+  animation: pulse 2s infinite;
+}
+
+.vet_bounce {
+  animation: bounce 1s infinite;
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.vet_glow {
+  box-shadow: 0 0 20px var(--vet-primary-glow);
+}
+
+/* ========================================
+   CUSTOM SCROLLBAR
+   ======================================== */
+
+.o_vet_dashboard_pro::-webkit-scrollbar {
+  width: 12px;
+}
+
+.o_vet_dashboard_pro::-webkit-scrollbar-track {
+  background: var(--vet-bg-body);
+}
+
+.o_vet_dashboard_pro::-webkit-scrollbar-thumb {
+  background: var(--vet-primary);
+  border-radius: 6px;
+  border: 3px solid var(--vet-bg-body);
+}
+
+.o_vet_dashboard_pro::-webkit-scrollbar-thumb:hover {
+  background: var(--vet-primary-dark);
+}
+
+/* ========================================
+   TOOLTIPS (if needed in future)
+   ======================================== */
+
+[data-tooltip] {
+  position: relative;
+  cursor: help;
+}
+
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  background: var(--vet-text-primary);
+  color: var(--vet-card-bg);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
+  z-index: 1000;
+}
+
+[data-tooltip]:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-4px);
+}
+
+/* ========================================
+   END OF ENHANCED VET DASHBOARD STYLES
+   ======================================== */
+_card {
+  background: var(--vet-bg-body);
+  border: 3px solid var(--vet-border-color);
+  border-radius: 16px;
+  padding: 20px;
+  text-align: center;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}

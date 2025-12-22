@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- LIST VIEW: HIDE COMPANY COLUMN -->
+    <record id="view_animal_doctor_list" model="ir.ui.view">
+        <field name="name">vet.animal.doctor.list</field>
+        <field name="model">vet.animal.doctor</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="not active">
+                <field name="name"/>
+                <field name="specialization"/>
+                <field name="contact_number"/>
+                <field name="company_id" string="Branch"/>
+                <field name="email" widget="email"/>
+                <field name="active" widget="boolean"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- FORM VIEW -->
+    <record id="view_animal_doctor_form" model="ir.ui.view">
+        <field name="name">vet.animal.doctor.form</field>
+        <field name="model">vet.animal.doctor</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_archive" string="Archive" type="object"
+                            class="oe_highlight" confirm="Archive this doctor?"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Dr. John Smith"/></h1>
+                    </div>
+                    <group>
+                        <group string="Company">
+                            <field name="company_id" 
+                                   options="{'no_create': True}"
+                                   groups="vet_test.group_vet_manager"/>
+                            <field name="company_id" 
+                                   options="{'no_create': True}"
+                                   readonly="1"
+                                   groups="vet_test.group_vet_limited_user"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Contact">
+                            <field name="contact_number" placeholder="03001234567"/>
+                            <field name="email" widget="email" placeholder="dr.john@clinic.com"/>
+                        </group>
+                        <group string="Professional">
+                            <field name="specialization" placeholder="Veterinary Surgery"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Notes">
+                            <field name="notes" placeholder="Additional information..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- SEARCH VIEW: AUTO COMPANY FILTER -->
+    <record id="view_animal_doctor_search" model="ir.ui.view">
+        <field name="name">vet.animal.doctor.search</field>
+        <field name="model">vet.animal.doctor</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="contact_number"/>
+                <field name="email"/>
+                <field name="specialization"/>
+    
+                <!-- Hidden filter automatically limiting to the logged-in company -->
+                <filter
+                    string="Current Company"
+                    name="current_company"
+                    domain="[('company_id', '=', context.get('allowed_company_ids', [uid])[0])]"
+                    invisible="1"
+                />
+    
+                <group expand="1" string="Group By">
+                    <filter string="Company" name="group_company" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ACTION: AUTO-APPLY FILTER -->
+    <record id="action_vet_animal_doctor" model="ir.actions.act_window">
+        <field name="name">Animal Doctors</field>
+        <field name="res_model">vet.animal.doctor</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="view_animal_doctor_list"/>
+        <field name="domain">[('company_id', '=', allowed_company_ids[0])]</field>
+        <field name="context">
+            {
+                'search_default_current_company': 1,
+                'active_test': True
+            }
+        </field>
+    </record>
+</odoo>

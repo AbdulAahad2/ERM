@@ -1,0 +1,19 @@
+<odoo>
+    <!-- Category for Vet -->
+    <record id="module_category_vet" model="ir.module.category">
+        <field name="name">Vet Management</field>
+        <field name="sequence">20</field>
+    </record>
+
+    <!-- Manager group -->
+    <record id="group_vet_manager" model="res.groups">
+        <field name="name">Vet Manager</field>
+        <field name="category_id" ref="module_category_vet"/>
+    </record>
+
+    <!-- Limited User group -->
+    <record id="group_vet_limited_user" model="res.groups">
+        <field name="name">Vet Limited User</field>
+        <field name="category_id" ref="module_category_vet"/>
+    </record>
+</odoo>

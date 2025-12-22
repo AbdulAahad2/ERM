@@ -1,0 +1,29 @@
+<odoo>
+    <record id="view_partner_form_inherit_vet" model="ir.ui.view">
+        <field name="name">res.partner.form.inherit.vet.animals</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <!-- Add is_vet_owner field in the header area (near active/company fields) -->
+            <xpath expr="//field[@name='category_id']" position="after">
+                <field name="is_vet_owner" widget="boolean_toggle"/>
+            </xpath>
+            
+            <!-- Add Animals notebook page -->
+            <sheet position="inside">
+                <notebook>
+                    <page string="Animals" invisible="not is_vet_owner">
+                        <field name="animal_ids">
+                            <list editable="bottom">
+                                <field name="microchip_no" string="Animal ID"/>
+                                <field name="name"/>
+                                <field name="species"/>
+                                <field name="dob"/>
+                            </list>
+                        </field>
+                    </page>
+                </notebook>
+            </sheet>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,265 @@
+<odoo>
+    <!-- Professional Kanban Dashboard with Light/Dark Mode Support -->
+    <record id="view_vet_dashboard_kanban" model="ir.ui.view">
+        <field name="name">vet.dashboard.kanban</field>
+        <field name="model">vet.dashboard</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_dashboard o_vet_dashboard_pro" sample="1" create="false" edit="false" delete="false">
+                <field name="name"/>
+                <field name="subtitle"/>
+                <field name="value"/>
+                <field name="value_secondary"/>
+                <field name="color"/>
+                <field name="icon"/>
+                <field name="url"/>
+                <field name="pending_count"/>
+                <field name="paid_count"/>
+                <field name="card_type"/>
+                <field name="extra_info"/>
+                <field name="percentage_change"/>
+                <field name="company_id"/>
+                
+                <templates>
+                    <t t-name="kanban-box">
+                        
+                        <!-- Standard Metric Cards -->
+                        <t t-if="record.color and record.color.raw_value and !['graph', 'chart', 'stats'].includes(record.color.raw_value)">
+                            <a t-att-href="record.url.raw_value" class="text-decoration-none">
+                                <div class="o_kanban_record vet_card_modern">
+                                    
+                                    <!-- Card Header with Gradient and Title -->
+                                    <div t-attf-class="card_header gradient_#{record.color.raw_value}">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="icon_container">
+                                                <i t-attf-class="fa #{record.icon.raw_value}"/>
+                                            </div>
+                                            <div class="card_title_badge">
+                                                <t t-esc="record.name.raw_value"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Card Body -->
+                                    <div class="card_body">
+                                        <div class="metric_value" t-esc="record.value.raw_value"/>
+                                        <div class="metric_subtitle" t-esc="record.subtitle.raw_value"/>
+                                        
+                                        <!-- Divider -->
+                                        <div class="card_divider"/>
+                                        
+                                        <!-- Extra Info -->
+                                        <div class="extra_info" t-if="record.extra_info and record.extra_info.raw_value">
+                                            <i class="fa fa-info-circle me-1"/>
+                                            <span t-esc="record.extra_info.raw_value"/>
+                                        </div>
+                                    </div>  
+                                </div>
+                            </a>
+                        </t>
+
+                        <!-- Invoice Summary Card (Enhanced) -->
+                        <t t-if="record.color and record.color.raw_value == 'graph'">
+                            <a t-att-href="record.url.raw_value" class="text-decoration-none">
+                                <div class="o_kanban_record vet_card_invoice">
+                                    
+                                    <!-- Header with gradient -->
+                                    <div class="invoice_header">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div>
+                                                <div class="d-flex align-items-center mb-2">
+                                                    <div class="invoice_icon">
+                                                        <i t-attf-class="fa #{record.icon.raw_value}"/>
+                                                      </div>
+                                                      <div class="ms-3">
+                                                        <h4 class="mb-0 ms-2" t-esc="record.name.raw_value"/>
+                                                        <p class="subtitle_text mb-0" t-esc="record.subtitle.raw_value"/>
+                                                      </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Stats Grid -->
+                                    <div class="invoice_body">
+                                        <div class="row g-3">
+                                            <!-- Paid Invoices -->
+                                            <div class="col-6">
+                                                <div class="stat_card stat_paid">  
+                                                    <div class="stat_content">
+                                                        <div class="stat_label">Paid</div>
+                                                        <div class="stat_value" t-esc="record.paid_count.raw_value"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Pending Invoices -->
+                                            <div class="col-6">
+                                                <div class="stat_card stat_pending">
+                                                    <div class="stat_content">
+                                                        <div class="stat_label">Pending</div>
+                                                        <div class="stat_value" t-esc="record.pending_count.raw_value"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Total Section -->
+                                        <div class="total_section">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <div class="total_label">Total Invoices</div>
+                                                    <div class="total_count" t-esc="record.value.raw_value"/>
+                                                </div>
+                                                <div class="revenue_badge">
+                                                    <i class="fa fa-coins me-1"/>
+                                                    <t t-esc="record.value_secondary.raw_value"/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div> 
+                                </div>
+                            </a>
+                        </t>
+
+                        <!-- Species Distribution Chart Card -->
+                        <t t-if="record.color and record.color.raw_value == 'chart'">
+                            <a t-att-href="record.url.raw_value" class="text-decoration-none">
+                                <div class="o_kanban_record vet_card_chart">
+                                    
+                                    <!-- Chart Header -->
+                                    <div class="chart_header">
+                                        <div class="d-flex align-items-center">
+                                            <div class="chart_icon">
+                                                <i t-attf-class="fa #{record.icon.raw_value}"/>
+                                            </div>
+                                            <div class="ms-3">
+                                                <h4 class="mb-0" t-esc="record.name.raw_value"/>
+                                                <p class="chart_subtitle mb-0" t-esc="record.subtitle.raw_value"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Chart Content -->
+                                    <div class="chart_body">
+                                        <div class="species_count_wrapper">
+                                            <div class="species_count" t-esc="record.value.raw_value"/>
+                                            <div class="species_label">Different Species</div>
+                                        </div>
+                                        
+                                        <!-- Species Breakdown -->
+                                        <div class="species_breakdown">
+                                            <div class="species_item">
+                                                <div class="species_info">
+                                                    <span>Canine</span>
+                                                </div>
+                                                <span class="species_count_small" t-esc="record.pending_count.raw_value"/>
+                                            </div>
+                                            <div class="species_item">
+                                                <div class="species_info">
+                                                    <span>Feline</span>
+                                                </div>
+                                                <span class="species_count_small" t-esc="record.paid_count.raw_value"/>
+                                            </div>
+                                        </div>
+                                    </div>  
+                                </div>
+                            </a>
+                        </t>
+
+                        <!-- Services Stats Card -->
+                        <t t-if="record.color and record.color.raw_value == 'stats'">
+                            <a t-att-href="record.url.raw_value" class="text-decoration-none">
+                                <div class="o_kanban_record vet_card_stats">
+                                    
+                                    <!-- Stats Header -->
+                                    <div class="stats_header">
+                                        <div class="d-flex align-items-center">
+                                            <div class="stats_icon">
+                                                <i t-attf-class="fa #{record.icon.raw_value}"/>
+                                            </div>
+                                            <div class="ms-3">
+                                                <h4 class="mb-0" t-esc="record.name.raw_value"/>
+                                                <p class="stats_subtitle mb-0" t-esc="record.subtitle.raw_value"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Stats Content -->
+                                    <div class="stats_body">
+                                        <!-- Total Services -->
+                                        <div class="total_services_wrapper">
+                                            <div class="total_services_count" t-esc="record.value.raw_value"/>
+                                            <div class="total_services_label">Total Services</div>
+                                        </div>
+                                        
+                                        <!-- Service Breakdown -->
+                                        <div class="row g-2 mt-2">
+                                            <div class="col-6">
+                                                <div class="service_type_card">
+                                                    <div class="service_type_count" t-esc="record.pending_count.raw_value"/>
+                                                    <div class="service_type_label">Vaccines</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="service_type_card">
+                                                    <div class="service_type_count" t-esc="record.paid_count.raw_value"/>
+                                                    <div class="service_type_label">Services</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        </t>
+                        
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Dashboard Action -->
+    <record id="action_vet_dashboard" model="ir.actions.act_window">
+        <field name="name">Veterinary Dashboard</field>
+        <field name="res_model">vet.dashboard</field>
+        <field name="view_mode">kanban</field>
+        <field name="domain">[]</field>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_create">
+                <i class="fa fa-chart-line fa-3x mb-3" style="color: var(--primary);"/>
+            </p>
+            <p class="text-muted">
+                <strong>Welcome to your Veterinary Management Dashboard!</strong>
+            </p>
+            <p class="text-muted">
+                Real-time analytics and insights for your veterinary practice.
+            </p>
+        </field>
+    </record>
+
+    <!-- Enhanced Graph View for Invoice Analysis -->
+    <record id="view_account_move_invoice_graph" model="ir.ui.view">
+        <field name="name">account.move.graph.invoices</field>
+        <field name="model">account.move</field>
+        <field name="arch" type="xml">
+            <graph string="Invoice Analysis" type="bar" stacked="false">
+                <field name="payment_state" type="row"/>
+                <field name="invoice_date" interval="month" type="col"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Invoice Graph Action -->
+    <record id="action_invoices_graph" model="ir.actions.act_window">
+        <field name="name">Invoice Analytics</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">graph,pivot,tree,form</field>
+        <field name="view_id" ref="view_account_move_invoice_graph"/>
+        <field name="domain">[('move_type','=','out_invoice')]</field>
+        <field name="context">{
+            'search_default_group_by_state': 1,
+            'group_by': ['payment_state']
+        }</field>
+    </record>
+</odoo>

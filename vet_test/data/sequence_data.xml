@@ -1,0 +1,14 @@
+<odoo>
+    <data noupdate="1">
+       <record id="sequence_vet_animal_microchip" model="ir.sequence">
+            <field name="name">Animal Microchip Number</field>
+            <field name="code">vet.animal.microchip</field>
+            <field name="prefix">PET-</field>
+            <field name="padding">6</field>
+            <field name="number_increment">1</field>
+            <field name="number_next_actual">1</field>
+        </record>
+    </data>
+</odoo>
+
+

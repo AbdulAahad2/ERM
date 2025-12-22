@@ -1,0 +1,23 @@
+<odoo>
+    <!-- Create category -->
+    <record id="module_category_vet" model="ir.module.category">
+        <field name="name">Vet Management</field>
+        <field name="sequence">25</field>
+    </record>
+
+    <!-- Limited User -->
+    <record id="group_vet_limited_user" model="res.groups">
+        <field name="name">Vet Limited User</field>
+        <field name="category_id" ref="module_category_vet"/>
+        <field name="share" eval="False"/>   <!-- normal group -->
+    </record>
+
+    <!-- Manager -->
+    <record id="group_vet_manager" model="res.groups">
+        <field name="name">Vet Manager</field>
+        <field name="category_id" ref="module_category_vet"/>
+        <field name="share" eval="False"/>   <!-- normal group -->
+        <!-- Make Manager inherit Limited User -->
+        <field name="implied_ids" eval="[(4, ref('vet_test.group_vet_limited_user'))]"/>
+    </record>
+</odoo>

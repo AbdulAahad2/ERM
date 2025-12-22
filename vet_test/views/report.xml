@@ -1,0 +1,416 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- ========================================================= -->
+    <!-- 1. REPORT ACTION -->
+    <!-- ========================================================= -->
+    <record id="action_report_visit_receipt" model="ir.actions.report">
+        <field name="name">Visit Receipt (Thermal)</field>
+        <field name="model">vet.animal.visit</field>
+        <field name="report_type">qweb-html</field>
+        <field name="report_name">vet_test.report_visit_receipt</field>
+        <field name="report_file">vet_test.report_visit_receipt</field>
+        <field name="binding_model_id" ref="vet_test.model_vet_animal_visit"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- ========================================================= -->
+    <!-- 2. QWEB TEMPLATE – 80 mm -->
+    <!-- ========================================================= -->
+    <template id="report_visit_receipt">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <div class="receipt">
+
+                    <!-- ====================== HEADER ====================== -->
+                    <div class="header">
+                        <img t-att-src="image_data_uri(env.company.logo)" class="logo"/>
+                        <div class="clinic-name">Healthy Tails Animal Hospital</div>
+                        <div class="clinic-email">healthytailsanimalhospital@gmail.com</div>
+                        <div class="clinic-contact">Shaheed-e-Millat: 0317-8221777</div>
+                        <div class="clinic-contact">Muslim: 0317-8221223</div>
+                    </div>
+
+                    <div class="divider-dashed"></div>
+
+                    <!-- ====================== VISIT INFO ====================== -->
+                    <div class="visit-info">
+                        <div class="visit-number"><t t-esc="doc.name"/></div>
+                        <div class="info-row">
+                            <span>Served By:</span>
+                            <span><t t-esc="env.user.name"/></span>
+                        </div>
+                        <div class="info-row">
+                            <span>Doctor:</span>
+                            <span><t t-esc="doc.doctor_id.name or 'N/A'"/></span>
+                        </div>
+                    </div>
+
+                    <div class="divider-dashed"></div>
+
+                    <!-- ====================== ANIMAL / OWNER ====================== -->
+                    <div class="customer-info">
+                        <t t-if="doc.animal_id">
+                            <div class="info-row">
+                                <span class="label">Animal:</span>
+                                <span class="value"><t t-esc="doc.animal_id.name"/></span>
+                            </div>
+                            <t t-if="doc.animal_id.microchip_no">
+                                <div class="info-row">
+                                    <span class="label">ID:</span>
+                                    <span class="value"><t t-esc="doc.animal_id.microchip_no"/></span>
+                                </div>
+                            </t>
+                        </t>
+                        <t t-if="doc.owner_id">
+                            <div class="info-row">
+                                <span class="label">Owner:</span>
+                                <span class="value"><t t-esc="doc.owner_id.name"/></span>
+                            </div>
+                            <t t-if="doc.owner_id.contact_number">
+                                <div class="info-row">
+                                    <span class="label">Phone:</span>
+                                    <span class="value"><t t-esc="doc.owner_id.contact_number"/></span>
+                                </div>
+                            </t>
+                        </t>
+                    </div>
+
+                    <div class="divider-dashed"></div>
+
+                    <!-- ====================== ITEMS TABLE ====================== -->
+                    <div class="items-section">
+                        <t t-foreach="doc.receipt_lines" t-as="line">
+                            <div class="item-row">
+                                <div class="item-header">
+                                    <div class="item-name">
+                                        <t t-esc="line.service_id.name or line.product_id.display_name"/>
+                                    </div>
+                                    <div class="item-price">
+                                        <t t-esc="'{:,.2f}'.format(line.subtotal)"/> Rs.
+                                    </div>
+                                </div>
+                                <div class="item-details">
+                                    <span class="qty-price">
+                                        <t t-esc="'{:,.2f}'.format(line.quantity)"/> x <t t-esc="'{:,.2f}'.format(line.price_unit)"/> Rs. / Units
+                                    </span>
+                                </div>
+                                <t t-if="line.line_discount > 0">
+                                    <div class="item-details discount-line">
+                                        <t t-esc="'{:,.2f}'.format(line.original_price * line.quantity)"/> Rs. With a <t t-esc="'{:,.2f}'.format(line.original_price * line.line_discount / 100 * line.quantity)"/> Rs. discount
+                                    </div>
+                                </t>
+                            </div>
+                        </t>
+
+                        <!-- Treatment Charge -->
+                        <t t-if="doc.treatment_charge > 0">
+                            <div class="item-row">
+                                <div class="item-header">
+                                    <div class="item-name">Treatment Charge</div>
+                                    <div class="item-price">
+                                        <t t-esc="'{:,.2f}'.format(doc.treatment_charge)"/> Rs.
+                                    </div>
+                                </div>
+                                <div class="item-details">
+                                    <span class="qty-price">1.00 x <t t-esc="'{:,.2f}'.format(doc.treatment_charge)"/> Rs. / Units</span>
+                                </div>
+                            </div>
+                        </t>
+                    </div>
+
+                    <div class="divider-dashed"></div>
+
+                    <!-- ====================== TOTALS ====================== -->
+                    <div class="totals-section">
+                        <div class="total-row">
+                            <span>Items Subtotal:</span>
+                            <span><t t-esc="'{:,.2f}'.format(doc.subtotal)"/></span>
+                        </div>
+                        
+                        <t t-if="doc.treatment_charge > 0">
+                            <div class="total-row">
+                                <span>Treatment Charges:</span>
+                                <span><t t-esc="'{:,.2f}'.format(doc.treatment_charge)"/></span>
+                            </div>
+                        </t>
+
+                        <t t-if="doc.discount_percent > 0">
+                            <div class="total-row discount">
+                                <span>Overall Discount:</span>
+                                <span>-<t t-esc="'{:,.2f}'.format((doc.subtotal + doc.treatment_charge) * doc.discount_percent / 100)"/></span>
+                            </div>
+                        </t>
+
+                        <t t-if="doc.discount_fixed > 0">
+                            <div class="total-row discount">
+                                <span>Fixed Discount:</span>
+                                <span>-<t t-esc="'{:,.2f}'.format(doc.discount_fixed)"/></span>
+                            </div>
+                        </t>
+                        
+                        <div class="divider-dashed"></div>
+
+                        <div class="total-row grand">
+                            <span>TOTAL:</span>
+                            <span><t t-esc="'{:,.2f}'.format(doc.total_amount)"/></span>
+                        </div>
+
+                        <t t-if="doc.amount_received > 0">
+                            <div class="total-row received">
+                                <span>Amount Received:</span>
+                                <span><t t-esc="'{:,.2f}'.format(doc.amount_received)"/></span>
+                            </div>
+                        </t>
+
+                        <t t-set="balance" t-value="doc.total_amount - doc.amount_received"/>
+                        <t t-if="balance > 0.01">
+                            <div class="total-row balance">
+                                <span>Balance Due:</span>
+                                <span><t t-esc="'{:,.2f}'.format(balance)"/></span>
+                            </div>
+                        </t>
+                        <t t-if="doc.owner_unpaid_balance > 0">
+                            <div class="total-row balance">
+                                <span>Total Unpaid Balance:</span>
+                                <span><t t-esc="'%.2f' % doc.owner_unpaid_balance"/></span>
+                            </div>
+                        </t>
+                    </div>
+
+                    <div class="divider-dashed"></div>
+
+                    <!-- ====================== FOOTER ====================== -->
+                    <div class="thanks">Thank You for Visiting!</div>
+                    <div class="footer-info">
+                        <div>Powered by ERManager Consulting Services</div>
+                        <div class="datetime">
+                            <span id="local-datetime-footer">Loading...</span>
+                        </div>
+                    </div>
+
+                </div>
+            </t>
+        </t>
+
+        <!-- ====================== CSS ====================== -->
+        <style type="text/css" media="screen,print">
+            @page { 
+                size: 80mm auto; 
+                margin: 0; 
+            }
+            
+            body { 
+                margin: 0; 
+                padding: 0; 
+                font-family: Arial, Helvetica, sans-serif; 
+                font-size: 11px; 
+                line-height: 1.4; 
+                color: #000;
+            }
+            
+            .receipt { 
+                width: 80mm; 
+                padding: 3mm 4mm; 
+                box-sizing: border-box;
+            }
+
+            /* Header */
+            .logo { 
+                display: block; 
+                margin: 0 auto 3mm; 
+                max-width: 35mm; 
+                height: auto; 
+            }
+            
+            .clinic-name { 
+                text-align: center; 
+                font-weight: bold; 
+                font-size: 14px; 
+                margin-bottom: 1mm;
+            }
+            
+            .clinic-email,
+            .clinic-contact { 
+                text-align: center; 
+                font-size: 10px;
+                line-height: 1.3;
+            }
+
+            .divider { 
+                text-align: center; 
+                margin: 2mm 0; 
+                font-weight: bold;
+                font-size: 10px;
+            }
+
+            .divider-thin {
+                text-align: center;
+                margin: 1mm 0;
+                font-size: 10px;
+            }
+
+            .divider-dashed {
+                border-top: 1px dashed #000;
+                margin: 3mm 0;
+            }
+
+            /* Visit Info */
+            .visit-info {
+                margin: 2mm 0;
+            }
+
+            .visit-number { 
+                text-align: center; 
+                font-size: 16px; 
+                font-weight: bold; 
+                margin: 2mm 0;
+                letter-spacing: 1px;
+            }
+
+            .info-row {
+                display: flex;
+                justify-content: space-between;
+                margin: 1mm 0;
+                font-size: 11px;
+            }
+
+            .info-row .label {
+                font-weight: bold;
+            }
+
+            /* Customer Info */
+            .customer-info {
+                margin: 2mm 0;
+            }
+
+            .customer-info .value {
+                font-weight: bold;
+            }
+
+            /* Items */
+            .items-section {
+                margin: 2mm 0;
+            }
+
+            .item-row {
+                margin: 3mm 0;
+            }
+
+            .item-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                font-weight: bold;
+                font-size: 12px;
+                margin-bottom: 1mm;
+            }
+
+            .item-name {
+                flex: 1;
+                padding-right: 3mm;
+                line-height: 1.3;
+            }
+
+            .item-price {
+                white-space: nowrap;
+                font-weight: bold;
+            }
+
+            .item-details {
+                font-size: 10px;
+                color: #333;
+                margin: 0.5mm 0;
+                line-height: 1.4;
+            }
+
+            .qty-price {
+                font-weight: normal;
+            }
+
+            .discount-line {
+                color: #666;
+            }
+
+            /* Totals */
+            .totals-section {
+                margin: 3mm 0;
+            }
+
+            .total-row {
+                display: flex;
+                justify-content: space-between;
+                margin: 1.5mm 0;
+                font-size: 11px;
+            }
+
+            .total-row.discount {
+                color: #d32f2f;
+            }
+
+            .total-row.grand {
+                font-size: 14px;
+                font-weight: bold;
+                margin: 2mm 0;
+                padding: 2mm 0;
+            }
+
+            .total-row.received {
+                color: #2e7d32;
+                font-weight: bold;
+            }
+
+            .total-row.balance {
+                color: #d32f2f;
+                font-weight: bold;
+                font-size: 12px;
+            }
+
+            /* Footer */
+            .thanks { 
+                text-align: center; 
+                font-weight: bold; 
+                font-size: 13px;
+                margin: 3mm 0 2mm; 
+            }
+            
+            .footer-info { 
+                text-align: center; 
+                font-size: 9px;
+                margin-top: 3mm;
+                line-height: 1.4;
+            }
+
+            .datetime {
+                margin-top: 1mm;
+                font-weight: bold;
+            }
+
+            /* Print adjustments */
+            @media print {
+                .receipt {
+                    page-break-after: always;
+                }
+            }
+        </style>
+
+        <!-- ====================== JS ====================== -->
+        <script>
+        //<![CDATA[
+            document.addEventListener('DOMContentLoaded', () => {
+                const now = new Date();
+                const formatted = `${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')}/${now.getFullYear()} ${String(now.getHours()%12||12).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} ${now.getHours()>=12?'PM':'AM'}`;
+                const el = document.getElementById('local-datetime-footer');
+                if (el) el.textContent = formatted;
+                setTimeout(() => window.print(), 300);
+            });
+
+            const close = () => window.close() || (window.location.href = 'about:blank');
+            window.addEventListener('afterprint', close);
+
+            let open = false;
+            window.addEventListener('blur', () => open = true);
+            window.addEventListener('focus', () => open && close());
+        //]]>
+        </script>
+    </template>
+</odoo>

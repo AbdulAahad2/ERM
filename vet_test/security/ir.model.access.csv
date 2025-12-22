@@ -1,0 +1,29 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_vet_animal_owner,vet.animal.owner,model_vet_animal_owner,,1,1,1,1
+access_vet_animal,vet.animal,model_vet_animal,,1,1,1,1
+access_vet_animal_doctor,vet.animal.doctor,model_vet_animal_doctor,,1,1,1,1
+access_vet_animal_visit,vet.animal.visit,model_vet_animal_visit,,1,1,1,1
+access_vet_service,vet.service,model_vet_service,,1,1,1,1
+access_animal_schedule,vet.animal.schedule,model_vet_animal_schedule,,1,1,1,1
+access_vet_dashboard,vet.dashboard,model_vet_dashboard,,1,0,0,0
+access_vet_animal_visit_line,vet.animal.visit.line,model_vet_animal_visit_line,,1,1,1,1
+access_vet_animal_history_wizard,vet.animal.history.wizard,model_vet_animal_history_wizard,,1,1,1,1
+access_vet_animal_history_line,vet.animal.history.line,model_vet_animal_history_line,,1,1,1,1
+access_vet_animal_visit_payment_wizard,vet.animal.visit.payment.wizard,model_vet_animal_visit_payment_wizard,,1,1,1,1
+access_vet_animal_limited,vet.animal.limited,model_vet_animal,vet_test.group_vet_limited_user,1,1,1,0
+access_vet_owner_limited,vet.owner.limited,model_vet_animal_owner,vet_test.group_vet_limited_user,1,1,1,0
+access_vet_animal_doctor_limited,vet.animal.doctor.limited,model_vet_animal_doctor,vet_test.group_vet_limited_user,1,1,1,0
+access_vet_visit_limited,vet.visit.limited,model_vet_animal_visit,vet_test.group_vet_limited_user,1,1,1,0
+access_vet_animal_manager,vet.animal.manager,model_vet_animal,vet_test.group_vet_manager,1,1,1,1
+access_vet_owner_manager,vet.owner.manager,model_vet_animal_owner,vet_test.group_vet_manager,1,1,1,1
+access_vet_visit_manager,vet.visit.manager,model_vet_animal_visit,vet_test.group_vet_manager,1,1,1,1
+access_vet_animal_admin,vet.animal.admin,model_vet_animal,,1,1,1,1
+access_vet_owner_admin,vet.owner.admin,model_vet_animal_owner,,1,1,1,1
+access_vet_doctor_admin,vet.doctor.admin,model_vet_animal_doctor,,1,1,1,1
+access_vet_visit_admin,vet.visit.admin,model_vet_animal_visit,,1,1,1,1
+access_vet_animal_history_service,vet.animal.history.service,vet_test.model_vet_animal_history_service,base.group_user,1,0,0,0
+access_vet_animal_history_service_admin,vet.animal.history.service admin access,vet_test.model_vet_animal_history_service,base.group_system,1,1,1,1
+access_vet_animal_history_service_vet_manager,vet.animal.history.service vet manager access,vet_test.model_vet_animal_history_service,vet_test.group_vet_manager,1,1,1,1
+access_vet_test_combo_selection_wizard_user,vet.test.combo.selection.wizard.user,model_vet_test_combo_selection_wizard,base.group_user,1,1,1,1
+access_vet_test_combo_selection_wizard_line_user,vet.test.combo.selection.wizard.line.user,model_vet_test_combo_selection_wizard_line,base.group_user,1,1,1,1
+access_vet_animal_visit_payment_wizard_user,vet.animal.visit.payment.wizard.user,model_vet_animal_visit_payment_wizard,base.group_user,1,1,1,1

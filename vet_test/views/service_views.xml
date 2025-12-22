@@ -1,0 +1,80 @@
+<odoo>
+    <!-- Action -->
+    <record id="action_vet_service" model="ir.actions.act_window">
+        <field name="name">Vet Services</field>
+        <field name="res_model">vet.service</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first Vet Service, Test, or Vaccine
+            </p>
+        </field>
+    </record>
+    <!-- List View -->
+    <record id="view_vet_service_list" model="ir.ui.view">
+        <field name="name">vet.service.list</field>
+        <field name="model">vet.service</field>
+        <field name="arch" type="xml">
+            <list string="Vet Services">
+                <field name="name"/>
+                <field name="service_type"/>
+                <field name="product_id"/>
+                <field name="price"/>
+            </list>
+        </field>
+    </record>
+    <!-- Form View -->
+    <record id="view_vet_service_form" model="ir.ui.view">
+        <field name="name">vet.service.form</field>
+        <field name="model">vet.service</field>
+        <field name="arch" type="xml">
+            <form string="Vet Service">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="service_type"/>
+                            <field name="price"/>
+                        </group>
+                        <group>
+                            <field name="product_id" 
+                                   options="{'no_create': True}"
+                                   readonly="1"/>
+                            <field name="description"/>
+                        </group>
+                    </group>
+                    <!-- Combo Choices Section for Tests -->
+                    <notebook>
+                        <page string="Combo Choices" 
+                              invisible="service_type != 'test'"
+                              name="combo_choices">
+                            <div class="alert alert-info" role="alert">
+                                <strong>How to create Test Combo Choices:</strong>
+                                <ol>
+                                    <li>Click "Add a line" below</li>
+                                    <li>Click "Create and Edit" to create a new combo choice</li>
+                                    <li>In the combo choice form:
+                                        <ul>
+                                            <li>Give it a name (e.g., "Blood Panel Options")</li>
+                                            <li>Add multiple component products in the "Items" tab</li>
+                                            <li>Set quantities and pricing for each item</li>
+                                            <li>Save the combo choice</li>
+                                        </ul>
+                                    </li>
+                                    <li>Repeat to add more combo choices if needed</li>
+                                    <li>Save the test to link all combo choices to the product</li>
+                                </ol>
+                            </div>
+                            <div class="alert alert-warning" role="alert" invisible="combo_choice_ids">
+                                <strong>Important:</strong> Add at least one combo choice before saving. Tests require combo choices to be defined.
+                            </div>
+                            <field name="combo_choice_ids" 
+                                   nolabel="1"
+                                   widget="many2many_tags"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

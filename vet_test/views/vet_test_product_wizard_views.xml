@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_vet_test_product_wizard_form" model="ir.ui.view">
+        <field name="name">vet.test.product.wizard.form</field>
+        <field name="model">vet.test.product.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Select Test Products">
+                <sheet>
+                    <group>
+                        <field name="visit_id" readonly="1"/>
+                        <field name="picking_id" readonly="1"/>
+                    </group>
+                    <field name="combo_lines">
+                        <list editable="bottom">
+                            <field name="test_line_id" readonly="1"/>
+                            <field name="combo_product_id" readonly="1"/>
+                            <field name="selected_product_id" domain="[('id', 'in', combo_product_components)]"/>
+                            <field name="quantity"/>
+                        </list>
+                    </field>
+                    <footer>
+                        <button name="action_confirm" string="Confirm" type="object" class="btn-primary"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_vet_test_product_wizard" model="ir.actions.act_window">
+        <field name="name">Select Test Products</field>
+        <field name="res_model">vet.test.product.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

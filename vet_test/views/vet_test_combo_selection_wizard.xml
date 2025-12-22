@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Wizard Form View -->
+    <record id="view_vet_test_combo_selection_wizard_form" model="ir.ui.view">
+        <field name="name">vet.test.combo.selection.wizard.form</field>
+        <field name="model">vet.test.combo.selection.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Select Test Components">
+                <sheet>
+                    <group>
+                        <field name="visit_id" readonly="1"/>
+                        <field name="test_line_ids" invisible="1"/>
+                    </group>
+                    
+                    <separator string="Select Components for Each Test"/>
+                    <p class="text-muted">
+                        For each test below, select which specific products should be delivered from the available combo choices.
+                    </p>
+                    
+                    <!-- Use the line_ids field to reference the One2many lines -->
+                    <field name="line_ids">
+                        <list editable="bottom">
+                            <field name="test_line_id" readonly="1" string="Test"/>
+                            <field name="combo_product_id" readonly="1" string="Test Product"/>
+                            <field name="component_product_id" required="1" string="Component to Deliver"/>
+                            <field name="quantity_to_deliver" string="Quantity"/>
+                            <field name="product_uom_id" readonly="1" string="UoM"/>
+                            <field name="available_quantity" readonly="1" string="On Hand"/>
+                        </list>
+                    </field>
+                    
+                    <footer>
+                        <button name="action_process" 
+                                string="Confirm and Create Invoice" 
+                                type="object" 
+                                class="btn-primary"/>
+                        <button string="Cancel" 
+                                class="btn-secondary" 
+                                special="cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Wizard Action -->
+    <record id="action_vet_test_combo_selection_wizard" model="ir.actions.act_window">
+        <field name="name">Select Test Components</field>
+        <field name="res_model">vet.test.combo.selection.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_vet_test_combo_selection_wizard_form"/>
+        <field name="target">new</field>
+    </record>
+</odoo>
+

@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_vet_animal_visit_invoice_list" model="ir.ui.view">
+        <field name="name">vet.animal.visit.invoice.list</field>
+        <field name="model">account.move</field>
+        <field name="arch" type="xml">
+            <list string="Invoices">
+                <!-- Header with Dashboard Summary -->
+                <header>
+                    <div class="container-fluid mt-2">
+                        <div class="row">
+                            <!-- Total All Invoices Card -->
+                            <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
+                                <div class="card bg-primary text-white">
+                                    <div class="card-body p-2">
+                                        <h6 class="card-title mb-1">Total All Invoices</h6>
+                                        <h4 class="card-text mb-0">
+                                            <field name="dashboard_total_all" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                        </h4>
+                                        <small class="card-text">All payment methods</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Total Cash Card -->
+                            <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
+                                <div class="card bg-success text-white">
+                                    <div class="card-body p-2">
+                                        <h6 class="card-title mb-1">Total Cash</h6>
+                                        <h4 class="card-text mb-0">
+                                            <field name="dashboard_total_cash" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                        </h4>
+                                        <small class="card-text">Cash payments only</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Total Bank Card -->
+                            <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
+                                <div class="card bg-info text-white">
+                                    <div class="card-body p-2">
+                                        <h6 class="card-title mb-1">Total Bank</h6>
+                                        <h4 class="card-text mb-0">
+                                            <field name="dashboard_total_bank" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                        </h4>
+                                        <small class="card-text">Bank transfers</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Total Online Card -->
+                            <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
+                                <div class="card bg-warning text-dark">
+                                    <div class="card-body p-2">
+                                        <h6 class="card-title mb-1">Total Online</h6>
+                                        <h4 class="card-text mb-0">
+                                            <field name="dashboard_total_online" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                        </h4>
+                                        <small class="card-text">Online/Credit cards</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Total Discounts Card -->
+                            <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
+                                <div class="card bg-secondary text-white">
+                                    <div class="card-body p-2">
+                                        <h6 class="card-title mb-1">Total Discounts</h6>
+                                        <h4 class="card-text mb-0">
+                                            <field name="dashboard_total_discount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                        </h4>
+                                        <small class="card-text">Discounts applied</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Reload Button -->
+                            <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
+                                <div class="card bg-light">
+                                    <div class="card-body p-2 text-center">
+                                        <h6 class="card-title mb-2">Dashboard Controls</h6>
+                                        <button type="action" name="%(vet_test.action_invoice_dashboard)d" string="Reload Dashboard" class="btn btn-primary btn-sm"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Additional Information -->
+                    <div class="container-fluid mt-2">
+                        <div class="alert alert-info p-2" role="status">
+                            <small>
+                                <i class="fa fa-info-circle mr-1" title="Information"></i>
+                                Showing totals for <t t-esc="len(records)"/> filtered invoices
+                            </small>
+                        </div>
+                    </div>
+                </header>
+                
+                <!-- List View Content -->
+                <button name="%(vet_test.action_invoice_dashboard)d" 
+                        type="action" 
+                        string="View Dashboard" 
+                        class="btn-primary"/>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="animal_display_name"/>
+                <field name="invoice_date"/>
+                <field name="amount_total" sum="Total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                <field name="amount_residual" sum="Amount Due" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                <field name="payment_method"/>
+                <field name="payment_state"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+</odoo>

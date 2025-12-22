@@ -1,0 +1,86 @@
+<odoo>
+    <!-- Animal Owner List View -->
+    <record id="view_animal_owner_list" model="ir.ui.view">
+        <field name="name">vet.animal.owner.list</field>
+        <field name="model">vet.animal.owner</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name" string="Owner Name"/>
+                <field name="contact_number" string="Contact Number"/>
+                <field name="email" string="Email" widget="email"/>
+                <field name="address" string="Address"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Animal Owner Form View -->
+    <record id="view_animal_owner_form" model="ir.ui.view">
+        <field name="name">vet.animal.owner.form</field>
+        <field name="model">vet.animal.owner</field>
+        <field name="arch" type="xml">
+            <form string="Animal Owner">
+                <header>
+                    <button name="action_archive" string="Archive" type="object" class="oe_highlight" confirm="Are you sure you want to archive this owner record?"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" string="Owner Name" placeholder="e.g. John Doe"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Contact Information">
+                            <field name="contact_number" string="Contact Number" placeholder="e.g. 03551564243"/>
+                            <field name="email" string="Email" widget="email" placeholder="e.g. john.doe@example.com"/>
+                        </group>
+                        <group string="Address">
+                            <field name="address" string="Address" placeholder="e.g. 123 Main St, City, Country"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Animals">
+                            <field name="animal_ids" string="Animals">
+                                <list editable="bottom">
+                                    <field name="microchip_no" string="Animal ID" readonly="1"/>
+                                    <field name="name" string="Animal Name"/>
+                                    <field name="species" string="Species"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Notes">
+                            <field name="notes" string="Additional Notes" nolabel="1" placeholder="Enter any additional information..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_vet_animal_owner_search" model="ir.ui.view">
+        <field name="name">vet.animal.owner.search</field>
+        <field name="model">vet.animal.owner</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="contact_number"/>
+                <field name="email"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_vet_animal_owner" model="ir.actions.act_window">
+        <field name="name">Animal Owners</field>
+        <field name="res_model">vet.animal.owner</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_vet_animal_owner_search"/>
+        <field name="help" type="html">
+            <p class="oe_view_nocontent_create">
+                Click to create a new animal owner.
+            </p>
+            <p>
+                Manage animal owners, their contact details, and associated animals.
+            </p>
+        </field>
+    </record>
+
+</odoo>

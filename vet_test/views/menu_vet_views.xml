@@ -1,0 +1,60 @@
+<odoo>
+    <menuitem id="menu_vet" name="Vet Management" sequence="1"/>
+    
+    <!-- Dashboard should be a child of menu_vet, not a root item -->
+    <menuitem id="menu_vet_dashboard"
+              name="Dashboard" 
+              parent="menu_vet" 
+              action="action_vet_dashboard" 
+              sequence="1"
+              groups="vet_test.group_vet_limited_user,vet_test.group_vet_manager"/>
+
+    <menuitem id="menu_vet_animals" 
+              name="Animals" 
+              parent="menu_vet" 
+              action="action_vet_animal" 
+              sequence="10"
+              groups="vet_test.group_vet_limited_user,vet_test.group_vet_manager"/>
+              
+    <menuitem id="menu_vet_owners" 
+              name="Owners" 
+              parent="menu_vet" 
+              action="action_vet_animal_owner" 
+              sequence="20"
+              groups="vet_test.group_vet_limited_user,vet_test.group_vet_manager"/>
+              
+    <menuitem id="menu_vet_doctors" 
+              name="Doctors" 
+              parent="menu_vet" 
+              action="action_vet_animal_doctor" 
+              sequence="30"
+              groups="vet_test.group_vet_limited_user,vet_test.group_vet_manager"/>
+              
+    <menuitem id="menu_vet_visits" 
+              name="Visits" 
+              parent="menu_vet" 
+              action="action_vet_animal_visit" 
+              sequence="40"
+              groups="vet_test.group_vet_limited_user,vet_test.group_vet_manager"/>
+              
+    <menuitem id="menu_vet_service" 
+              name="Services" 
+              parent="menu_vet" 
+              action="action_vet_service" 
+              sequence="50"
+              groups="vet_test.group_vet_manager"/>
+              
+    <menuitem id="menu_vet_invoice" 
+              name="Invoice" 
+              parent="menu_vet" 
+              action="invoice_list_action" 
+              sequence="60"
+              groups="vet_test.group_vet_limited_user,vet_test.group_vet_manager"/>
+              
+    <menuitem id="menu_vet_history" 
+              name="History" 
+              parent="menu_vet" 
+              action="action_vet_animal_history_wizard" 
+              sequence="70"
+              groups="vet_test.group_vet_limited_user,vet_test.group_vet_manager"/>
+</odoo>

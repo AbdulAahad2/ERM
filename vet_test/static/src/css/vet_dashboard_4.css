@@ -1,0 +1,912 @@
+/* ========================================
+   ENHANCED VET DASHBOARD - COMPACT & UNIFORM
+   Professional Design with Equal Width Cards
+   ======================================== */
+
+/* Enhanced CSS Variables */
+:root {
+  /* Base Colors */
+  --vet-card-bg: #ffffff;
+  --vet-card-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --vet-card-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.15);
+  --vet-text-primary: #1a202c;
+  --vet-text-secondary: #4a5568;
+  --vet-text-muted: #718096;
+  --vet-border-color: #e2e8f0;
+  --vet-bg-body: #f7fafc;
+
+  /* Vibrant Card Colors */
+  --vet-primary: #5b67e4;
+  --vet-primary-dark: #4451d0;
+  --vet-primary-light: #eef0ff;
+  --vet-primary-glow: rgba(91, 103, 228, 0.2);
+
+  --vet-success: #10b981;
+  --vet-success-dark: #059669;
+  --vet-success-light: #d1fae5;
+  --vet-success-glow: rgba(16, 185, 129, 0.2);
+
+  --vet-warning: #f59e0b;
+  --vet-warning-dark: #d97706;
+  --vet-warning-light: #fef3c7;
+  --vet-warning-glow: rgba(245, 158, 11, 0.2);
+
+  --vet-danger: #ef4444;
+  --vet-danger-dark: #dc2626;
+  --vet-danger-light: #fee2e2;
+  --vet-danger-glow: rgba(239, 68, 68, 0.2);
+
+  --vet-info: #06b6d4;
+  --vet-info-dark: #0891b2;
+  --vet-info-light: #cffafe;
+  --vet-info-glow: rgba(6, 182, 212, 0.2);
+
+  --vet-purple: #8b5cf6;
+  --vet-purple-dark: #7c3aed;
+  --vet-purple-light: #ede9fe;
+  --vet-purple-glow: rgba(139, 92, 246, 0.2);
+}
+
+/* Dark Mode Support */
+.o_dark .o_kanban_dashboard,
+[data-color-scheme="dark"] .o_kanban_dashboard,
+body.o_dark .o_kanban_dashboard {
+  --vet-card-bg: #1e293b;
+  --vet-card-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --vet-card-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.6);
+  --vet-text-primary: #f1f5f9;
+  --vet-text-secondary: #cbd5e1;
+  --vet-text-muted: #94a3b8;
+  --vet-border-color: #334155;
+  --vet-bg-body: #0f172a;
+}
+
+/* ========================================
+   DASHBOARD LAYOUT - EQUAL WIDTH CARDS
+   ======================================== */
+
+.o_vet_dashboard_pro {
+  padding: 20px;
+  min-height: 100vh;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.o_vet_dashboard_pro .o_kanban_record {
+  margin: 0 !important;
+  /* Equal width cards - 5 cards per row with gap */
+  flex: 0 0 calc(20% - 13px);
+  max-width: calc(20% - 13px);
+  min-width: 220px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ========================================
+   COMPACT METRIC CARDS
+   ======================================== */
+
+.vet_card_modern {
+  background: var(--vet-card-bg);
+  border-radius: 16px;
+  box-shadow: var(--vet-card-shadow);
+  overflow: hidden;
+  min-height: 200px;
+  max-height: 200px;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid transparent;
+  position: relative;
+}
+
+.vet_card_modern::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 16px;
+  padding: 2px;
+  background: linear-gradient(135deg, transparent, transparent);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.vet_card_modern:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: var(--vet-card-shadow-hover);
+}
+
+.vet_card_modern:hover::before {
+  opacity: 1;
+}
+
+/* Compact Gradient Headers with Title Badge */
+.card_header {
+  padding: 16px 18px;
+  position: relative;
+  overflow: hidden;
+  min-height: 70px;
+}
+
+.card_header::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.15) 0%,
+    transparent 70%
+  );
+  animation: shimmer 4s infinite ease-in-out;
+}
+
+@keyframes shimmer {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-30px, -30px) scale(1.1);
+  }
+}
+
+/* Enhanced Gradient Variations */
+.gradient_primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 8px 24px var(--vet-primary-glow);
+}
+
+.gradient_success {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  box-shadow: 0 8px 24px var(--vet-success-glow);
+}
+
+.gradient_warning {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  box-shadow: 0 8px 24px var(--vet-warning-glow);
+}
+
+.gradient_danger {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  box-shadow: 0 8px 24px var(--vet-danger-glow);
+}
+
+.gradient_info {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  box-shadow: 0 8px 24px var(--vet-info-glow);
+}
+
+.gradient_purple {
+  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+  box-shadow: 0 8px 24px var(--vet-purple-glow);
+}
+
+/* Compact Icon Container */
+.icon_container {
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.vet_card_modern:hover .icon_container {
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+}
+
+.icon_container i {
+  font-size: 24px;
+  color: #ffffff;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+/* Card Title Badge (Replaces Trend) */
+.card_title_badge {
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(12px);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+/* Compact Card Body */
+.card_body {
+  padding: 18px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.01) 100%);
+}
+
+.metric_value {
+  font-size: 32px;
+  font-weight: 800;
+  background: linear-gradient(
+    135deg,
+    var(--vet-primary) 0%,
+    var(--vet-purple) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 4px;
+  line-height: 1.1;
+  letter-spacing: -1px;
+}
+
+.metric_subtitle {
+  font-size: 12px;
+  color: var(--vet-text-muted);
+  margin-bottom: 14px;
+  font-weight: 500;
+}
+
+.card_divider {
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--vet-border-color) 20%,
+    var(--vet-border-color) 80%,
+    transparent 100%
+  );
+  margin: 12px 0;
+}
+
+.extra_info {
+  font-size: 11px;
+  color: var(--vet-text-secondary);
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--vet-primary-light);
+  border-radius: 10px;
+  margin-top: auto;
+  border: 2px solid var(--vet-primary);
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.extra_info:hover {
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px var(--vet-primary-glow);
+}
+
+.extra_info i {
+  color: var(--vet-primary);
+  margin-right: 6px;
+  font-size: 14px;
+}
+
+/* ========================================
+   COMPACT INVOICE CARD
+   ======================================== */
+
+.vet_card_invoice {
+  background: var(--vet-card-bg);
+  border-radius: 16px;
+  box-shadow: var(--vet-card-shadow);
+  overflow: hidden;
+  min-height: 280px;
+  max-height: 280px;
+  border: 2px solid transparent;
+  transition: all 0.4s ease;
+  position: relative;
+}
+
+.vet_card_invoice:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px rgba(102, 126, 234, 0.3);
+  border-color: #667eea;
+}
+
+.invoice_header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 16px 18px;
+  color: white;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.invoice_icon {
+  width: 44px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.invoice_icon i {
+  font-size: 22px;
+  color: white;
+}
+
+.invoice_header h4 {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.subtitle_text {
+  font-size: 11px;
+  opacity: 0.95;
+  font-weight: 500;
+}
+
+/* Compact Invoice Body */
+.invoice_body {
+  padding: 18px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Compact Stat Cards */
+.stat_card {
+  padding: 14px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat_card:hover {
+  transform: translateX(2px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.stat_paid {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  border-color: var(--vet-success);
+}
+
+.stat_pending {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-color: var(--vet-warning);
+}
+
+.stat_content {
+  white-space: nowrap;
+  flex: 1;
+}
+
+.stat_label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--vet-text-secondary);
+  margin-bottom: 4px;
+  letter-spacing: 0.6px;
+}
+
+.stat_value {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--vet-text-primary);
+  line-height: 1;
+}
+
+/* Compact Total Section */
+.total_section {
+  margin-top: 16px;
+  padding: 16px;
+  background: linear-gradient(
+    135deg,
+    var(--vet-primary-light) 0%,
+    rgba(102, 126, 234, 0.1) 100%
+  );
+  border-radius: 12px;
+  border: 3px solid var(--vet-primary);
+  position: relative;
+  overflow: hidden;
+}
+
+.total_label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--vet-text-secondary);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.total_count {
+  font-size: 26px;
+  font-weight: 800;
+  background: linear-gradient(
+    135deg,
+    var(--vet-primary) 0%,
+    var(--vet-purple) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+}
+
+.revenue_badge {
+  background: linear-gradient(
+    135deg,
+    var(--vet-primary) 0%,
+    var(--vet-primary-dark) 100%
+  );
+  color: white;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px var(--vet-primary-glow);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+/* ========================================
+   COMPACT CHART CARD
+   ======================================== */
+
+.vet_card_chart {
+  background: var(--vet-card-bg);
+  border-radius: 16px;
+  box-shadow: var(--vet-card-shadow);
+  overflow: hidden;
+  min-height: 260px;
+  max-height: 260px;
+  border: 2px solid transparent;
+  transition: all 0.4s ease;
+}
+
+.vet_card_chart:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px rgba(240, 147, 251, 0.3);
+  border-color: #f093fb;
+}
+
+.chart_header {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  padding: 16px 18px;
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.chart_icon {
+  width: 44px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.chart_icon i {
+  font-size: 22px;
+  color: white;
+}
+
+.chart_header h4 {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.chart_subtitle {
+  font-size: 11px;
+  opacity: 0.95;
+  font-weight: 500;
+}
+
+.chart_body {
+  padding: 18px;
+}
+
+.species_count_wrapper {
+  text-align: center;
+  margin-bottom: 16px;
+  padding: 14px;
+  background: linear-gradient(
+    135deg,
+    var(--vet-purple-light) 0%,
+    rgba(139, 92, 246, 0.1) 100%
+  );
+  border-radius: 12px;
+  border: 2px solid var(--vet-purple);
+}
+
+.species_count {
+  font-size: 40px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  letter-spacing: -2px;
+}
+
+.species_label {
+  font-size: 12px;
+  color: var(--vet-text-secondary);
+  margin-top: 6px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+/* Compact Species Breakdown */
+.species_breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.species_item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  background: var(--vet-bg-body);
+  border-radius: 10px;
+  border: 2px solid var(--vet-border-color);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.species_item:hover {
+  transform: translateX(4px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  border-color: var(--vet-primary);
+}
+
+.species_info {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vet-text-primary);
+}
+
+.species_count_small {
+  font-size: 18px;
+  font-weight: 800;
+  background: linear-gradient(
+    135deg,
+    var(--vet-primary) 0%,
+    var(--vet-purple) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ========================================
+   COMPACT STATS CARD
+   ======================================== */
+
+.vet_card_stats {
+  background: var(--vet-card-bg);
+  border-radius: 16px;
+  box-shadow: var(--vet-card-shadow);
+  overflow: hidden;
+  min-height: 250px;
+  max-height: 250px;
+  border: 2px solid transparent;
+  transition: all 0.4s ease;
+}
+
+.vet_card_stats:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px rgba(79, 172, 254, 0.3);
+  border-color: #4facfe;
+}
+
+.stats_header {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  padding: 16px 18px;
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.stats_icon {
+  width: 44px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.stats_icon i {
+  font-size: 22px;
+  color: white;
+}
+
+.stats_header h4 {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.stats_subtitle {
+  font-size: 11px;
+  opacity: 0.95;
+  font-weight: 500;
+}
+
+.stats_body {
+  padding: 18px;
+}
+
+.total_services_wrapper {
+  text-align: center;
+  margin-bottom: 14px;
+  padding: 14px;
+  background: linear-gradient(
+    135deg,
+    var(--vet-info-light) 0%,
+    rgba(6, 182, 212, 0.1) 100%
+  );
+  border-radius: 12px;
+  border: 2px solid var(--vet-info);
+}
+
+.total_services_count {
+  font-size: 40px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  letter-spacing: -2px;
+}
+
+.total_services_label {
+  font-size: 12px;
+  color: var(--vet-text-secondary);
+  margin-top: 6px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+/* Compact Service Type Cards */
+.service_type_card {
+  background: var(--vet-bg-body);
+  border: 2px solid var(--vet-border-color);
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.service_type_card:hover {
+  border-color: var(--vet-primary);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 8px 24px rgba(91, 103, 228, 0.2);
+}
+
+.service_type_count {
+  font-size: 22px;
+  font-weight: 800;
+  background: linear-gradient(
+    135deg,
+    var(--vet-primary) 0%,
+    var(--vet-purple) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 6px 0;
+}
+
+.service_type_label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--vet-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.o_kanban_record {
+  animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.o_kanban_record:nth-child(1) {
+  animation-delay: 0.05s;
+}
+.o_kanban_record:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.o_kanban_record:nth-child(3) {
+  animation-delay: 0.15s;
+}
+.o_kanban_record:nth-child(4) {
+  animation-delay: 0.2s;
+}
+.o_kanban_record:nth-child(5) {
+  animation-delay: 0.25s;
+}
+.o_kanban_record:nth-child(6) {
+  animation-delay: 0.3s;
+}
+.o_kanban_record:nth-child(7) {
+  animation-delay: 0.35s;
+}
+.o_kanban_record:nth-child(8) {
+  animation-delay: 0.4s;
+}
+.o_kanban_record:nth-child(9) {
+  animation-delay: 0.45s;
+}
+.o_kanban_record:nth-child(10) {
+  animation-delay: 0.5s;
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+/* 4 cards per row for medium screens */
+@media (max-width: 1400px) {
+  .o_vet_dashboard_pro .o_kanban_record {
+    flex: 0 0 calc(25% - 12px);
+    max-width: calc(25% - 12px);
+  }
+}
+
+/* 3 cards per row for tablets */
+@media (max-width: 1024px) {
+  .o_vet_dashboard_pro .o_kanban_record {
+    flex: 0 0 calc(33.333% - 11px);
+    max-width: calc(33.333% - 11px);
+  }
+}
+
+/* 2 cards per row for small tablets */
+@media (max-width: 768px) {
+  .o_vet_dashboard_pro {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .o_vet_dashboard_pro .o_kanban_record {
+    flex: 0 0 calc(50% - 6px);
+    max-width: calc(50% - 6px);
+    min-width: 200px;
+  }
+}
+
+/* 1 card per row for mobile */
+@media (max-width: 576px) {
+  .o_vet_dashboard_pro {
+    padding: 12px;
+  }
+
+  .o_vet_dashboard_pro .o_kanban_record {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+}
+
+/* ========================================
+   DARK MODE ENHANCEMENTS
+   ======================================== */
+
+.o_dark .vet_card_modern,
+.o_dark .vet_card_invoice,
+.o_dark .vet_card_chart,
+.o_dark .vet_card_stats {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.o_dark .extra_info {
+  background: rgba(91, 103, 228, 0.15);
+}
+
+.o_dark .stat_paid {
+  background: rgba(16, 185, 129, 0.15);
+}
+
+.o_dark .stat_pending {
+  background: rgba(245, 158, 11, 0.15);
+}
+
+/* ========================================
+   ACCESSIBILITY
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+::selection {
+  background: var(--vet-primary);
+  color: white;
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+
+@media print {
+  .vet_card_modern,
+  .vet_card_invoice,
+  .vet_card_chart,
+  .vet_card_stats {
+    page-break-inside: avoid;
+    box-shadow: none !important;
+    border: 2px solid #ddd !important;
+  }
+}

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+        <record id="view_pos_commission_report_wizard" model="ir.ui.view">
+            <field name="name">commission.report.form</field>
+            <field name="model">commission.report</field>
+            <field name="arch" type="xml">
+                <form string="Commission Details">
+                    <group colspan="2">
+                        <group>
+                            <field name="start_date"/>
+                            <field name="end_date"/>
+                            <field name="report_of"/>
+                            <field name="employee_id" domain="[('is_commission_applicable', '=', True)]" invisible="report_of!='employee'" required="report_of =='employee'"/>
+                            <field name="user_id" domain="[('is_commission_applicable', '=', True)]" invisible="report_of!='user'" required="report_of=='user'"/>
+                        </group>
+                    </group>
+                    <footer>
+                        <button name="generate_commission_report" string="Generate Report" type="object" class="btn-primary"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel" />
+                    </footer>
+                </form>
+            </field>
+        </record> 
+
+        <record id="pos_commission_report_action_window" model="ir.actions.act_window">
+            <field name="name">POS Commission Report</field>
+            <field name="res_model">commission.report</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+
+        <record id="pos_commission_report_details" model="ir.actions.report">
+            <field name="name">Commission Report</field>
+            <field name="model">report.point_of_sale.report_saledetails</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">point_of_sale.report_saledetails</field>
+        </record> 
+
+        <menuitem id="pos_commission_report_child_view_menuitem" name="Download Report" 
+        parent="pos_sales_commission.pos_commission_view_menuitem" 
+        action="pos_sales_commission.pos_commission_report_action_window" sequence='20'/>  
+</odoo>

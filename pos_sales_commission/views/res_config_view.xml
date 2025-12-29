@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_inherit_sale_commission" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.sale.commission</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="point_of_sale.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@id='pos_bills_and_receipts_section']" position="after">
+                <block title="Commission">
+                    <setting help="Enable POS Sale Commission.">
+                        <field name="is_use_pos_commission"/>
+                    </setting>
+                    <setting invisible="not is_use_pos_commission" help="Show Apply Commission Button">
+                        <field name="show_apply_commission"/>
+                    </setting>
+                    <setting id="sale_commission_id" string="Select a default Commission rule to use in POS" help="Select a default Commission rule to use in POS">
+                        <field name="sale_commission_id" colspan="4" nolabel="1" required='True'/>
+                        <div class="mt8">
+                            <button name="%(pos_sales_commission.pos_sale_commission_action_window)d" icon="fa-arrow-right" type="action" string="Commission" class="btn-link"/>
+                        </div>
+                    </setting>
+                    <setting id="commission_product_id" string="Select a default Commission Product to use in commission and invoice." help="Select a default Commission Product to use in commission and invoice.">
+                        <field name="commission_product_id" readonly="0" />
+                        <div class="mt8">
+                            <button name="%(product.product_template_action_all)d" icon="fa-arrow-right" type="action" string="Product" class="btn-link"/>
+                        </div>
+                    </setting>
+                    <setting id="create_commission" string="Creation of Commission" help="Creation of Commission based on the selection below">
+                        <field name="create_commission" class="o_light_label" widget="radio" required="True"/>
+                    </setting>
+                    <setting id="auto_confirm_at_order_validation" string="Auto Confirm Commission" help="Auto Confirm commission at the time of Order Validation.">
+                        <field name="auto_confirm_at_order_validation"/>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

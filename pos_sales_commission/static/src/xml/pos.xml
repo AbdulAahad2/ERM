@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>  
+<templates id="template" xml:space="preserve">
+
+    <t t-name="pos_sales_commission.ControlButtons" t-inherit="point_of_sale.ControlButtons" t-inherit-mode="extension">
+        <xpath expr="//OrderlineNoteButton" position="after">
+            <button 
+                t-att-id="'apply_commission'"
+                t-att-class="buttonClass"
+                t-att-disabled="!pos.get_order()"
+                t-on-click="() => this.onClickApplyCommission()"
+                class="control-button btn btn-light">
+                <span style="font-size:12px;">
+                    <t t-if="pos.get_order() and pos.get_order().is_commission and pos.get_order().commission_employee_name">
+                        <i class="fa fa-check-circle me-1"/>
+                        Commission: <t t-esc="pos.get_order().commission_employee_name"/>
+                    </t>
+                    <t t-else="">
+                        <i class="fa fa-user-plus me-1"/>
+                        Select Employee for Commission
+                    </t>
+                </span>
+            </button>
+        </xpath>
+    </t>
+
+</templates>

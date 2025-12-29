@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="pos_sales_commission.EmployeeSelectionPopup">
+        <Dialog title="'Select Employee for Commission'">
+            <div class="popup-employee-selection p-3">
+                <!-- Search Bar -->
+                <div class="mb-3">
+                    <input 
+                        type="text" 
+                        class="form-control" 
+                        placeholder="Search employees..."
+                        t-model="state.searchTerm"
+                    />
+                </div>
+
+                <!-- Loading State -->
+                <div t-if="state.loading" class="text-center py-4">
+                    <i class="fa fa-spinner fa-spin fa-2x"/>
+                    <p class="mt-2">Loading employees...</p>
+                </div>
+
+                <!-- Employee List -->
+                <div t-else="" style="max-height: 400px; overflow-y: auto;">
+                    <!-- No employees found -->
+                    <div t-if="eligibleEmployees.length === 0" class="alert alert-info">
+                        <i class="fa fa-info-circle"/>
+                        <span t-if="state.searchTerm">
+                            No employees found matching "<t t-esc="state.searchTerm"/>"
+                        </span>
+                        <span t-else="">
+                            No eligible veterinarian employees found.
+                        </span>
+                    </div>
+
+                    <!-- Employee list -->
+                    <div t-else="" class="list-group">
+                        <t t-foreach="eligibleEmployees" t-as="employee" t-key="employee.id">
+                            <button
+                                t-attf-class="list-group-item list-group-item-action {{ isSelected(employee.id) ? 'active' : '' }}"
+                                t-on-click="() => this.selectEmployee(employee.id)"
+                                style="cursor: pointer;">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>
+                                            <i class="fa fa-user-md me-2"/>
+                                            <t t-esc="employee.name"/>
+                                        </strong>
+                                        <div t-if="employee.job_title" class="text-muted small">
+                                            <t t-esc="employee.job_title"/>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span class="badge bg-success me-1">
+                                            <i class="fa fa-check-circle"/>
+                                        </span>
+                                        <span class="badge bg-info">
+                                            <i class="fa fa-stethoscope"/>
+                                        </span>
+                                    </div>
+                                </div>
+                            </button>
+                        </t>
+                    </div>
+                </div>
+
+                <!-- Footer Buttons -->
+                <div class="d-flex justify-content-end gap-2 mt-3">
+                    <button class="btn btn-secondary" t-on-click="cancel">
+                        Cancel
+                    </button>
+                    <button 
+                        class="btn btn-primary" 
+                        t-on-click="confirm"
+                        t-att-disabled="!state.selectedEmployeeId">
+                        Confirm
+                    </button>
+                </div>
+            </div>
+        </Dialog>
+    </t>
+</templates>

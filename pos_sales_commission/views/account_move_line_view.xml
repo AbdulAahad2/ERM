@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="invoice_commission_inherit_form" model="ir.ui.view">
+            <field name="name">account.move.inherit.pos.commission.form</field>
+            <field name="model">account.move</field>
+            <field name="inherit_id" ref="account.view_move_form" />
+            <field name="arch" type="xml">
+            <xpath expr="//field[@name='invoice_line_ids']//form//field[@name='account_id']" position="after">
+                <field name="pos_commission_id" string="POS Commission"/>
+            </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

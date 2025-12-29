@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pos_invoice_data_wizard" model="ir.ui.view">
+        <field name="name">invoice.data.form</field>
+        <field name="model">invoice.data</field>
+        <field name="arch" type="xml">
+            <form string="Invoice Details">
+                <group>
+                    <field name="start_date"/>
+                    <field name="end_date"/>
+                    <field name="report_of"/>
+                    <field name="employee_id" invisible="report_of!='employee'" required='True'/>
+                    <field name="user_id" invisible="report_of!='user'" required='True'/>
+                </group>
+                <footer>
+                    <!-- <button name="create_invoice" string="Create Invoice" type="object" class="btn-primary"/> -->
+                    <button string="Cancel" class="btn-secondary" special="cancel" />
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="pos_invoice_data_action_window" model="ir.actions.act_window">
+        <field name="name">POS Invoice Data</field>
+        <field name="res_model">invoice.data</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+         <template id="report_pos_commission_summary">
+           <t t-call="web.html_container">
+           <t t-call="web.internal_layout">
+                <div class="text-center">
+                    <h2>Commission Summary : <t t-esc="title"/></h2>
+                    <strong><t t-esc="start_date" t-options="{'widget': 'datetime'}"/> - <t t-esc="end_date" t-options="{'widget': 'datetime'}"/></strong>
+                </div>
+                <br/>
+                <table cellpadding="15" style="text-align:center" class="table table-condensed mb32">
+                    <thead>
+                        <tr>
+                            <th>
+                                <strong>Order</strong>
+                            </th>
+                            <th>
+                                <strong>Date</strong>
+                            </th>
+                            <th>
+                                <strong>State</strong>
+                            </th>
+                            <th class="text-right">
+                                <strong>Commission Amount</strong>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="commission_lines" t-as="line">
+                            <td><span t-esc="line.get('order')"/></td>
+                            <td><span t-esc="line.get('date')"/></td>
+                            <td><span t-esc="line.get('state')"/></td>
+                            <td><span t-esc="line.get('commission')"/></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Total Commission : </strong></td>
+                            <td></td>
+                            <td></td>
+                            <td><t t-esc="total"/></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </t>
+            </t>
+        </template> 
+    </data>
+</odoo>

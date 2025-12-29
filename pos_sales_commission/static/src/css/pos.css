@@ -1,0 +1,92 @@
+.text_shake {
+  animation: shake 0.82s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  border: 5px solid red !important;
+}
+
+@keyframes shake {
+  10%,
+  90% {
+    transform: translate3d(-1px, 0, 0);
+  }
+
+  20%,
+  80% {
+    transform: translate3d(2px, 0, 0);
+  }
+
+  30%,
+  50%,
+  70% {
+    transform: translate3d(-4px, 0, 0);
+  }
+
+  40%,
+  60% {
+    transform: translate3d(4px, 0, 0);
+  }
+}
+
+.commission_selected {
+  background: #6ec89b !important;
+  color: white;
+}
+
+.wk_choose_option_block {
+  margin: 10px;
+}
+.wk_choose_options_button {
+  text-align: center;
+  width: 184px;
+  padding: 24px;
+  margin: 10px;
+  border: solid 2px rgba(60, 60, 60, 0.1);
+  cursor: pointer;
+}
+.wk_button_float1 {
+  float: left;
+}
+.wk_choose_options_text {
+  font-weight: 700;
+  font-size: 14px;
+  color: #929292;
+  text-align: center;
+}
+.wk_button_float2 {
+  float: right;
+}
+.wk_choose_options_button:hover {
+  background: #6ec89b;
+  color: white;
+}
+
+/* ------------------------------------------- */
+.commission_selected {
+  background-color: #28a745 !important;
+  color: white !important;
+}
+
+.employee-item:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+  transition: all 0.2s;
+}
+
+.employee-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.employee-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.employee-list::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.employee-list::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

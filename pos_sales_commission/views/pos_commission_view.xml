@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="pos_commission_form_view" model="ir.ui.view">
+            <field name="name">POS Commission</field>
+            <field name="model">pos.commission</field>
+            <field name="type">form</field>
+            <field name="arch" type="xml">
+                <form string='Commission' create="false" edit="false">
+                    <header>
+                        <button name="action_confirm"  string="Confirm" class="oe_highlight" type="object" invisible="state!='draft'"/>
+                        <!-- <button name="action_cancel" type="object" string="Cancel" invisible="['|',('state','!=','draft'),'|',('state','!=','cancel')]"/> -->
+                        <button name="action_cancel" string="Cancel" type="object" invisible="state!='draft'"/>
+                        <button name="action_cancel" string="Cancel" type="object" invisible="state!='cancel'" />
+                        <button name="create_invoice_button" string="Invoice" class="oe_highlight" type="object" invisible="state!='confirm'"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,confirm,invoice,paid" />
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box" invisible="not move_id">
+                            <button class="oe_stat_button" type="object" name="button_show_invoice" icon="fa-file-text-o">
+                                <div class="o_form_field o_stat_info">
+                                    <span class="o_stat_text">Invoice</span>
+                                </div>
+                            </button>
+                        </div>
+                        <group>
+                            <field name='product_id'  invisible="not product_id" readonly="True"/>
+                            <field name="employee_id" string='Employee' invisible="not employee_id" />
+                            <field name="user_id" string='User' invisible="employee_id" />
+                            <field name='order_id' readonly="True"/>
+                            <field name='commission_amount' string="Total Commission" widget="monetary" readonly="True" options="{'currency_field': 'currency_id'}" invisible="not product_id"/>
+                            <field name="currency_id" invisible="1" />
+                            <field name='move_id' string="Invoice" invisible="not move_id" readonly="True"/>
+                        </group>
+                        <notebook>
+                            <page string="Commissions" invisible="product_id">
+                                <field name="pos_commission_line_ids">
+                                    <list string="Commission Lines">
+                                        <field name="product_id" readonly="True"/>
+                                        <field name="qty" readonly="True"/>
+                                        <field name="commission_amount" readonly="True"/>
+                                    </list>
+                                    <form string="Commission Lines">
+                                        <group col="4">
+                                            <field name="employee_id" string='User' invisible="not employee_id" />
+                                            <field name="user_id" string='User' invisible="employee_id" />
+                                            <field name="product_id" readonly="True"/>
+                                            <field name="qty" readonly="True"/>
+                                            <field name="price_unit" readonly="True"/>
+                                            <field name="commission_amount" readonly="True"/>
+                                            <field name="move_id" invisible="not move_id" readonly="True"/>
+                                        </group>
+                                    </form>
+                                </field>
+                                <group class="oe_subtotal_footer oe_right" colspan="2">
+                                    <div class="oe_subtotal_footer_separator oe_inline">
+                                        <label for="commission_amount" string="Total Commission" />
+                                    </div>
+                                    <field name="commission_amount"
+                                        nolabel="1"
+                                        class="oe_subtotal_footer_separator"
+                                        widget="monetary"
+                                        options="{'currency_field': 'currency_id'}"/>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="pos_commission_list_view" model="ir.ui.view">
+            <field name="name">POS Commission</field>
+            <field name="model">pos.commission</field>
+            <field name="type">list</field>
+            <field name="arch" type="xml">
+                <list string='Commission' create="false" edit="false" default_order="id desc">
+                    <field name='name'/>
+                    <field name='order_id'/>
+                    <field name='state'/>
+                    <field name='commission_amount' sum="Commission total" widget="monetary"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="pos_commission_search" model="ir.ui.view">
+            <field name="name">POS Commission Search</field>
+            <field name="model">pos.commission</field>
+            <field name="arch" type="xml">
+				<search string="POS Commisison">
+                    <field name="name"/>
+                    <field name="order_id"/>
+                    <filter string="Draft" name="state" domain="[('state', '=', 'draft')]"/>
+					<filter string="Confirm" name="state" domain="[('state','=','confirm')]"/>
+					<filter string="Invoiced" name="state" domain="[('state','=','invoice')]"/>
+					<filter string="Paid" name="state" domain="[('state','=','paid')]"/>
+					<filter string="Cancel" name="state" domain="[('state','=','cancel')]"/>
+					<group expand="0" string="Group By">
+						<filter string="State" name="state" domain="[]" context="{'group_by':'state'}"/>
+						<filter string="User" name="user" domain="[]" context="{'group_by':'user_id'}"/>
+					</group>
+				</search>
+            </field>
+        </record>
+
+        <record id="pos_commission_action_window" model="ir.actions.act_window">
+            <field name="name">POS Commission</field>
+            <field name="res_model">pos.commission</field>
+            <field name="view_mode">list,form</field>
+            <field name="view_id" ref="pos_sales_commission.pos_commission_list_view"/>
+        </record>
+
+        <record model="ir.actions.server" id="wk_open_invoice_server_action">
+            <field name="name">Creat Invoice</field>
+            <field name="model_id" ref="model_pos_commission"/>
+            <field name="binding_model_id" ref="model_pos_commission" />
+            <field name="state">code</field>
+            <field name="code">
+                if records:
+                    action = records.create_invoice()
+            </field>
+        </record>
+
+        <menuitem id="pos_commission_child_view_menuitem" name="Commissions" 
+        parent="pos_sales_commission.pos_commission_view_menuitem" 
+        action="pos_sales_commission.pos_commission_action_window" sequence='1'/>        
+    </data>
+</odoo>

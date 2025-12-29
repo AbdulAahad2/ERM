@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="show_wizard_message_form" model="ir.ui.view">
+            <field name="name">Message wizard</field>
+            <field name="model">show.wizard.message</field>
+            <field name="type">form</field>
+            <field name="arch" type="xml">
+                <form string="Message">
+                    <field name="text" nolabel="True" readonly="True"/>
+                    <footer>
+                        <button special="cancel" class="oe_highlight" string="Close" />
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record id="show_wizard_message_action" model="ir.actions.act_window">
+            <field name="name">show.wizard.message</field>
+            <field name="res_model">show.wizard.message</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+    </data>
+</odoo>

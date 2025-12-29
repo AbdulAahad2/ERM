@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="pos_sale_commission_form_view" model="ir.ui.view">
+            <field name="name">POS Sale Commission</field>
+            <field name="model">pos.sale.commission</field>
+            <field name="type">form</field>
+            <field name="arch" type="xml">
+                <form>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name"/>
+                            </h1>
+                        </div>
+                        <group colspan='2'>
+                            <group>
+                                <field name="start_date" required="end_date"/>
+                                <field name="end_date" required="start_date"/>
+                            </group>
+                            <group>
+                                <field name="active"/>
+                                <field name='currency_id' invisible="True"/>
+
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Commission Calculation">
+                                <group>
+                                    <field name="commission_rule" string='On the Basis '/>
+                                </group>
+                                <group>
+                                    <field name='cart_amount_commission_ids' nolabel="True" invisible="commission_rule!='amount'">
+                                        <list string='Cart Amount Rules'>
+                                            <field name="name"/>
+                                            <field name="compute_commision"/>
+                                            <field name="commission"/>
+                                            <field name="cart_amount_from" string='Amount from'/>
+                                            <field name="cart_amount_to" string='Amount to'/>
+                                        </list>
+                                        <form string='Cart Amount Rule'>
+                                            <group>
+                                                <group>
+                                                    <field name="name"/>
+                                                </group>
+                                                <group colspan='2'>
+                                                    <group>
+                                                        <field name="cart_amount_from"/>
+                                                        <field name="cart_amount_to"/>
+                                                    </group>
+                                                </group>
+                                                <group>
+                                                    <field name='compute_commision' required="True" widget='radio'/>
+                                                </group>
+                                                <group>
+                                                    <field name='currency_id' invisible="True"/>
+                                                    <field name="fixed_commission" invisible="compute_commision!='fixed'"/>
+                                                    <label for="percent_commission" invisible="compute_commision!='percentage'"/>
+                                                    <div invisible="compute_commision!='percentage'">
+                                                        <field name="percent_commission" class="oe_inline" invisible="compute_commision!='percentage'"/>
+                                                            %%
+                                                    </div>
+                                                </group>
+                                            </group>
+                                        </form>
+                                    </field>
+                                </group>
+
+                                <field name="commission_line_ids" invisible="commission_rule!='rule'">
+                                    <list string="Commission Items">
+                                        <field name="name"/>
+                                        <field name='apply_on' required="True" />
+                                        <field name='min_qty'/>
+                                        <field name='commission'/>
+                                        <field name='compute_commision'/>
+                                    </list>
+                                    <form string="Commission Items">
+                                        <group colspan='2'>
+                                            <group>
+                                                <field name='apply_on' required="True" widget="radio"/>
+                                                <field name="categ_id" invisible="apply_on!='2_categories'" required="apply_on=='2_categories'" />
+                                                <field name="product_id" invisible="apply_on!='1_products'" required="apply_on=='1_products'"/>
+                                            </group>
+                                            <group>
+                                                <field name='min_qty'/>
+                                            </group>
+                                        </group>
+                                        <group string="Commission Computation">
+                                            <group colspan='2'>
+                                                <group>
+                                                    <field name='compute_commision' required="True" widget='radio'/>
+                                                </group>
+                                                <group>
+                                                    <field name='currency_id' invisible="True"/>
+                                                    <field name="fixed_commission" invisible="compute_commision!='fixed'"/>
+                                                    <label for="percent_commission" invisible="compute_commision!='percentage'"/>
+                                                    <div invisible="compute_commision!='percentage'">
+                                                        <field name="percent_commission" class="oe_inline" invisible="compute_commision!='percentage'" />
+                                                            %%
+                                                    </div>
+
+                                                </group>
+                                            </group>
+                                        </group>
+                                    </form>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="pos_sale_commission_list_view" model="ir.ui.view">
+            <field name="name">POS Sale Commission</field>
+            <field name="model">pos.sale.commission</field>
+            <field name="type">list</field>
+            <field name="arch" type="xml">
+                <list>
+                    <field name="name"/>
+                    <field name="commission_rule"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="pos_sale_commission_action_window" model="ir.actions.act_window">
+            <field name="name">POS Sale Commission</field>
+            <field name="res_model">pos.sale.commission</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <menuitem id="pos_commission_view_menuitem" name="Commission" parent="point_of_sale.menu_point_root" sequence='10'/>
+
+        <menuitem id="pos_sale_commission_view_menuitem" name="Commission Configuration" parent="pos_sales_commission.pos_commission_view_menuitem" action="pos_sales_commission.pos_sale_commission_action_window"/>
+
+    </data>
+</odoo>

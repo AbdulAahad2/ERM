@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="commission_pos_commission_view" model="ir.actions.act_window">
+        <field name="name">POS Commission</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">pos.commission</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('pos_sales_commission.pos_commission_list_view')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('pos_sales_commission.pos_commission_form_view')})
+        ]"/>
+    </record>
+
+    <record id="pos_order_view_form_inherit_sale_commission" model="ir.ui.view">
+        <field name="name">pos.order.view.form.inherit.sale.commission</field>
+        <field name="model">pos.order</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_pos_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet//div[hasclass('oe_button_box')]" position="inside">
+                <button name="action_view_commission"
+                    type="object"
+                    class="oe_stat_button"
+                    icon="fa-pencil-square-o"
+                    invisible="commission_count==0">
+                    <field name="commission_count" widget="statinfo" string="Commission"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record model='pos.sale.commission.line' id='pos_sale_commission_line_4'>
+            <field name='apply_on'>3_all</field>
+            <field name="compute_commision">percentage</field>
+            <field name="percent_commission">20</field>
+        </record>
+
+        <record model='pos.sale.commission.line' id='pos_sale_commission_line_5'>
+            <field name='apply_on'>2_categories</field>
+            <field name="categ_id" ref="product.product_category_4"/>
+            <field name="compute_commision">percentage</field>
+            <field name="percent_commission">10</field>
+        </record>
+
+        <record model='pos.sale.commission.line' id='pos_sale_commission_line_6'>
+            <field name='apply_on'>1_products</field>
+            <field name="product_id" ref="point_of_sale.whiteboard_pen"/>
+            <field name="compute_commision">percentage</field>
+            <field name="percent_commission">5</field>
+        </record>
+
+        <record model="pos.sale.commission" id="pos_sale_commission_2">
+            <field name="name">Commission 2</field>
+            <field name="commission_line_ids" eval="[(6,0,[ref('pos_sales_commission.pos_sale_commission_line_4'),
+                                                            ref('pos_sales_commission.pos_sale_commission_line_5'),
+                                                            ref('pos_sales_commission.pos_sale_commission_line_6')]
+            )]"/>
+        </record>
+
+        <record model="res.users" id="base.user_demo">
+            <field name="is_commission_applicable">True</field>
+        </record>
+
+        <record model="res.users" id="base.user_admin">
+            <field name="is_commission_applicable">True</field>
+        </record>
+
+        <record model="hr.employee" id='hr_employee_1'>
+            <field name="name">New Employee</field>
+            <field name="is_commission_applicable">True</field>
+        </record>
+    </data>
+</odoo>

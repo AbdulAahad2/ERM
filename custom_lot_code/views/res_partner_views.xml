@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_inherit_lot_code" model="ir.ui.view">
+        <field name="name">res.partner.form.inherit.lot_code</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='sales_purchases']" position="inside">
+                <group>
+                    <field name="lot_code"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

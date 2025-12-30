@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_stock_auto_generate_lots_form" model="ir.ui.view">
+        <field name="name">stock.auto.generate.lots.form</field>
+        <field name="model">stock.auto.generate.lots</field>
+        <field name="arch" type="xml">
+            <form string="Auto Generate Lots">
+                <sheet>
+                    <group>
+                        <field name="move_id" invisible="1"/>
+                        <p class="text-muted">
+                            This will generate lots using the format: <b>[Vendor Code]-[Sequence]</b>.
+                            Only lines with a recorded quantity and no existing Lot/Serial will be updated.
+                        </p>
+                    </group>
+                    <group string="Lines to be Processed">
+                        <field name="move_line_ids" nolabel="1">
+                            <list create="false" delete="false" edit="false">
+                                <field name="product_id"/>
+                                <field name="quantity" string="Done"/>
+                                <field name="lot_id" placeholder="Will be generated..."/>
+                            </list>
+                        </field>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_auto_generate_lots" string="Confirm Generation" type="object" class="btn-primary" data-hotkey="q"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

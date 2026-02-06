@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree view for vendor.selection.wizard.line -->
+    <record id="view_vendor_selection_wizard_line_tree" model="ir.ui.view">
+        <field name="name">vendor.selection.wizard.line.tree</field>
+        <field name="model">vendor.selection.wizard.line</field>
+        <field name="arch" type="xml">
+            <list editable="bottom" create="false" delete="false">
+                <field name="selected" widget="boolean_toggle"/>
+                <field name="vendor_id" />
+                <field name="products" />
+            </list>
+        </field>
+    </record>
+
+    <record id="view_vendor_selection_wizard_form" model="ir.ui.view">
+        <field name="name">vendor.selection.wizard.form</field>
+        <field name="model">vendor.selection.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Select Vendors for RFQ">
+                <field name="requisition_id" invisible="1"/>
+                <group>
+                    <p colspan="2" style="margin-bottom: 15px;">
+                        <b>Select the vendors you want to create RFQs for:</b>
+                    </p>
+                </group>
+                <group>
+                    <field name="line_ids" nolabel="1" widget="one2many">
+                        <list editable="bottom" create="false" delete="false">
+                            <field name="selected" widget="boolean_toggle"/>
+                            <field name="vendor_id"/>
+                            <field name="products" />
+                        </list>
+                    </field>
+                </group>
+                <footer>
+                    <button string="Create RFQs" name="action_create_rfqs" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_vendor_selection_wizard" model="ir.actions.act_window">
+        <field name="name">Select Vendors</field>
+        <field name="res_model">vendor.selection.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_employee_requisition"/>
+    </record>
+</odoo>

@@ -1,0 +1,17 @@
+<odoo>
+    <record id="email_template_requisition" model="mail.template">
+        <field name="name">Purchase Requisition Notification</field>
+        <field name="model_id" ref="model_employee_requisition"/>
+        <field name="subject">New Purchase Requisition: ${object.name}</field>
+        <field name="email_from">${object.employee_id.work_email}</field>
+        <field name="email_to">${object.employee_id.parent_id.work_email}</field>
+        <field name="body_html">
+            <![CDATA[
+                <p>Hello ${object.employee_id.parent_id.name},</p>
+                <p>${object.employee_id.name} has submitted a purchase requisition.</p>
+                <p>Total: ${object.total_amount}</p>
+                <p>Click <a href="/web#id=${object.id}&action=action_requisition_tree&model=employee.requisition&view_type=form">here</a> to review.</p>
+            ]]>
+        </field>
+    </record>
+</odoo>

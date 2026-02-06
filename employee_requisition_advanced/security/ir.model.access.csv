@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_employee_requisition,employee.requisition,model_employee_requisition,,1,1,1,1
+access_employee_requisition_line,employee.requisition.line,model_employee_requisition_line,,1,1,1,1
+access_vendor_selection_wizard,vendor.selection.wizard,model_vendor_selection_wizard,,1,1,1,1
+access_vendor_selection_wizard_line,vendor.selection.wizard.line,model_vendor_selection_wizard_line,,1,1,1,1

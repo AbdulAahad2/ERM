@@ -1,0 +1,45 @@
+<odoo>
+    <template id="employee_requisition_report_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <div class="page">
+                    <h2>Employee Requisition: <t t-esc="doc.name"/></h2>
+                    <p>Employee: <t t-esc="doc.employee_id.name"/></p>
+                    <p>Department: <t t-esc="doc.department_id.name"/></p>
+                    <p>Total Amount: <t t-esc="doc.total_amount"/> <t t-esc="doc.currency_id.symbol"/></p>
+                    <table class="table table-condensed">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Vendor</th>
+                                <th>Quantity</th>
+                                <th>Unit Price</th>
+                                <th>Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="doc.line_ids" t-as="line">
+                                <td><t t-esc="line.product_id.display_name"/></td>
+                                <td><t t-esc="line.vendor_id.name"/></td>
+                                <td><t t-esc="line.quantity"/></td>
+                                <td><t t-esc="line.price_unit"/></td>
+                                <td><t t-esc="line.subtotal"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <!-- Report Action -->
+    <report
+        id="employee_requisition_report_action"
+        model="employee.requisition"
+        string="Employee Requisition"
+        report_type="qweb-pdf"
+        name="employee_requisition_advanced.employee_requisition_report_template"
+        file="employee_requisition_advanced.employee_requisition_report_template"
+        print_report_name="'Requisition - %s' % (object.name)"
+    />
+</odoo>

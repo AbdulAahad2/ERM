@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Employee Requisition User Group -->
+    <record id="group_requisition_user" model="res.groups">
+        <field name="name">Requisition User</field>
+        <field name="category_id" ref="base.module_category_hidden"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <!-- Requisition Manager Group -->
+    <record id="group_requisition_manager" model="res.groups">
+        <field name="name">Requisition Manager</field>
+        <field name="category_id" ref="base.module_category_hidden"/>
+        <field name="implied_ids" eval="[(4, ref('group_requisition_user'))]"/>
+    </record>
+
+    <!-- Requisition Administrator (full access) -->
+    <record id="group_requisition_admin" model="res.groups">
+        <field name="name">Requisition Administrator</field>
+        <field name="category_id" ref="base.module_category_hidden"/>
+        <field name="implied_ids" eval="[(4, ref('group_requisition_manager'))]"/>
+    </record>
+
+    <!-- Record Rules -->
+
+    <!-- Rule 1: Users can see their own requisitions -->
+    <record id="employee_requisition_rule_own" model="ir.rule">
+        <field name="name">Own Requisitions</field>
+        <field name="model_id" ref="model_employee_requisition"/>
+        <field name="domain_force">[('employee_id.user_id', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <!-- Rule 2: Department Managers can see their department's requisitions -->
+    <record id="employee_requisition_rule_dept_manager" model="ir.rule">
+        <field name="name">Department Manager Access</field>
+        <field name="model_id" ref="model_employee_requisition"/>
+        <field name="domain_force">[('department_id.manager_id.user_id', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <!-- Rule 3: Users can see requisitions waiting for manager approval if they are the direct manager -->
+    <record id="employee_requisition_rule_parent_manager" model="ir.rule">
+        <field name="name">Parent Manager Access</field>
+        <field name="model_id" ref="model_employee_requisition"/>
+        <field name="domain_force">[('employee_id.parent_id.user_id', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <!-- Rule 4: All users can see requisitions in CFO approval state (CFO will be among them) -->
+    <record id="group_cfo" model="res.groups">
+        <field name="name">Chief Financial Officer</field>
+        <field name="category_id" ref="base.module_category_hidden"/>
+    </record>
+
+    <!-- CEO Group -->
+    <record id="group_ceo" model="res.groups">
+        <field name="name">Chief Executive Officer</field>
+        <field name="category_id" ref="base.module_category_hidden"/>
+    </record>
+
+    <!-- Then modify Rule 4 to only apply to CFO/CEO groups -->
+    <record id="employee_requisition_rule_cfo_approval" model="ir.rule">
+        <field name="name">CFO Approval State Visibility</field>
+        <field name="model_id" ref="model_employee_requisition"/>
+        <field name="domain_force">[('state', 'in', ['cfo_approval', 'ceo_approval', 'approved', 'done'])]</field>
+        <field name="groups" eval="[(4, ref('group_cfo')), (4, ref('group_ceo'))]"/>
+    </record>
+
+    <!-- Rule 5: Admins can see everything -->
+    <record id="employee_requisition_rule_admin" model="ir.rule">
+        <field name="name">Admin Full Access</field>
+        <field name="model_id" ref="model_employee_requisition"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_requisition_admin'))]"/>
+    </record>
+</odoo>

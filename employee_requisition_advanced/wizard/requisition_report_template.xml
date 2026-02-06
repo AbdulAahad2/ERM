@@ -1,0 +1,67 @@
+<odoo>
+    <record id="action_report_employee_requisition" model="ir.actions.report">
+        <field name="name">Employee Requisition Report</field>
+        <field name="model">employee.requisition</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">employee_requisition_advanced.report_requisition_document</field>
+        <field name="report_file">employee_requisition_advanced.report_requisition_document</field>
+        <field name="print_report_name">'Requisition_Report_%s' % (object.name or 'Report')</field>
+        <field name="binding_model_id" eval="False"/>
+    </record>
+
+    <template id="report_requisition_document">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <div class="text-center">
+                        <h2>Employee Requisition Report</h2>
+                        <p>
+                            <t t-if="docs">
+                                <strong>Employee: </strong> <span t-esc="docs[0].employee_id.name"/><br/>
+                            </t>
+                            <strong>Period: </strong>
+                            <span t-esc="context.get('date_from')"/> to <span t-esc="context.get('date_to')"/>
+                        </p>
+                    </div>
+
+                    <table class="table table-sm o_main_table mt-4">
+                        <thead>
+                            <tr>
+                                <th>Reference</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Total</th>
+                                <th>Notes/Cancel Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="docs" t-as="o">
+                                <tr>
+                                    <td><span t-field="o.name"/></td>
+                                    <td><span t-field="o.create_date" t-options='{"widget": "date"}'/></td>
+                                    <td><span t-field="o.state"/></td>
+                                    <td><span t-field="o.total_amount"/></td>
+                                    <td>
+                                        <t t-if="o.state == 'cancel'">
+                                            <strong>Reason: </strong> <span t-field="o.cancel_reason"/>
+                                        </t>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="5" class="bg-light">
+                                        <div style="margin-left: 20px;">
+                                            <em>Items: </em>
+                                            <t t-foreach="o.line_ids" t-as="line">
+                                                [<span t-field="line.product_id.name"/>: <span t-field="line.quantity"/>]
+                                            </t>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

@@ -1,0 +1,231 @@
+<odoo>
+    <!-- ============================================= -->
+    <!-- ENHANCED TREE/LIST VIEW                      -->
+    <!-- ============================================= -->
+    <record id="view_employee_requisition_tree_enhanced" model="ir.ui.view">
+        <field name="name">employee.requisition.list.enhanced</field>
+        <field name="model">employee.requisition</field>
+        <field name="arch" type="xml">
+            <list string="Employee Requisitions"
+                  multi_edit="1"
+                  sample="1"
+                  decoration-info="state == 'draft'"
+                  decoration-warning="state in ('manager_approval', 'ceo_approval')"
+                  decoration-success="state in ('approved', 'done')"
+                  decoration-danger="state == 'cancel'"
+                  decoration-muted="state == 'cancel'">
+
+                <!-- Core Fields -->
+                <field name="name" string="Reference"/>
+                <field name="employee_id" widget="many2one_avatar_user"/>
+                <field name="department_id" optional="show"/>
+                <field name="create_date" string="Created On" optional="show"/>
+
+                <!-- Financial Fields -->
+                <field name="total_amount"
+                       sum="Grand Total"
+                       widget="monetary"
+                       decoration-danger="total_amount > 10000000"/>
+                <field name="max_unit_price"
+                       string="Max Unit Price"
+                       widget="monetary"
+                       optional="hide"/>
+
+                <!-- Status & Actions -->
+                <field name="state"
+                       widget="badge"
+                       decoration-info="state == 'manager_approval'"
+                       decoration-warning="state == 'ceo_approval'"
+                       decoration-success="state in ('approved', 'done')"
+                       decoration-danger="state == 'cancel'"/>
+
+                <field name="can_approve" column_invisible="1"/>
+                <field name="currency_id" column_invisible="1"/>
+
+                <!-- Action Buttons -->
+                <button name="action_submit"
+                        type="object"
+                        string="Submit"
+                        class="btn-primary"
+                        icon="fa-paper-plane"
+                        invisible="state != 'draft'"/>
+
+                <button name="action_approve"
+        type="object"
+        string="Approve"
+        class="btn-success"
+        icon="fa-check"
+        invisible="not can_approve or state not in ('manager_approval', 'ceo_approval')"/>
+
+                <button name="action_create_po_manual"
+                        type="object"
+                        string="Create PO"
+                        class="btn-primary"
+                        icon="fa-shopping-cart"
+                        invisible="state != 'approved'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ============================================= -->
+    <!-- IMPROVED FORM VIEW                           -->
+    <!-- ============================================= -->
+    <record id="view_employee_requisition_form_enhanced" model="ir.ui.view">
+        <field name="name">employee.requisition.form.enhanced</field>
+        <field name="model">employee.requisition</field>
+        <field name="arch" type="xml">
+            <form string="Employee Requisition">
+                <header>
+                    <!-- Action Buttons -->
+                    <button name="action_submit"
+                            string="Submit for Approval"
+                            type="object"
+                            class="oe_highlight"
+                            invisible="state != 'draft'"
+                            icon="fa-paper-plane"/>
+
+                    <button name="action_approve"
+        type="object"
+        string="Approve"
+        class="btn-success"
+        icon="fa-check"
+        invisible="not can_approve or state not in ('manager_approval', 'ceo_approval')"/>
+
+                    <button name="action_create_po_manual"
+                            string="Create Purchase Order (Manual)"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'approved'"
+                            icon="fa-shopping-cart"/>
+
+                    <button name="action_create_rfq_per_vendor"
+                            string="Create RFQ per Vendor"
+                            type="object"
+                            class="btn-secondary"
+                            invisible="state != 'approved'"
+                            confirm="This will create separate RFQs for each vendor. Proceed?"
+                            icon="fa-file-text-o"/>
+
+                    <button name="action_cancel"
+                            string="Cancel"
+                            type="object"
+                            invisible="state in ['done', 'cancel']"
+                            icon="fa-times-circle"/>
+
+                    <!-- Status Bar -->
+                    <field name="state"
+                           widget="statusbar"
+                           statusbar_visible="draft,manager_approval,ceo_approval,approved,done"
+                           clickable="False"/>
+                </header>
+
+                <sheet>
+                    <!-- Alert Ribbons -->
+                    <div class="oe_ribbon oe_ribbon_topright" invisible="state != 'approved'">
+                        <span class="bg-success">Ready for PO</span>
+                    </div>
+                    <div class="oe_ribbon oe_ribbon_topright" invisible="state != 'cancel'">
+                        <span class="bg-danger">Cancelled</span>
+                    </div>
+
+                    <!-- Title Section -->
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1" class="oe_inline"/>
+                        </h1>
+                        <div class="o_row">
+                            <field name="state" invisible="1"/>
+                            <field name="can_approve" invisible="1"/>
+                        </div>
+                    </div>
+
+                    <!-- Smart Buttons -->
+                    <div class="oe_button_box" name="button_box">
+                        <!-- Add smart buttons for related POs if needed -->
+                    </div>
+
+                    <!-- Main Information -->
+                    <group>
+                        <group string="Requester Information">
+                            <field name="employee_id"
+                                   readonly="state != 'draft'"
+                                   widget="many2one_avatar_user"/>
+                            <field name="department_id"/>
+                            <field name="create_date" string="Created On"/>
+                        </group>
+                        <group string="Financial Summary">
+                            <field name="currency_id"
+                                   groups="base.group_multi_currency"
+                                   invisible="1"/>
+                            <field name="total_amount"
+                                   widget="monetary"
+                                   class="oe_subtotal_footer_separator"/>
+                            <field name="max_unit_price"
+                                   string="Highest Unit Price"
+                                   widget="monetary"/>
+                        </group>
+                    </group>
+
+                    <!-- Alert Box for Approval Requirements -->
+                    <div class="alert alert-info"
+                         role="alert"
+                         invisible="state not in ['draft', 'manager_approval', 'ceo_approval']">
+                        <strong>💡 Approval Requirements:</strong>
+                        <ul class="mb-0">
+                            <li>Up to $10,000,000: Manager Can Self-Approve</li>
+                            <li>Above $10,000,000: Manager + CEO Approval Required</li>
+                        </ul>
+                    </div>
+
+                    <!-- Tabs -->
+                    <notebook>
+                        <!-- Products Tab -->
+                        <page string="📦 Requested Products" name="products">
+                            <field name="line_ids">
+                                <list editable="bottom"
+                                      decoration-warning="not vendor_id">
+                                    <field name="product_id"
+                                           domain="[('type', 'in', ['product', 'consu'])]"/>
+                                    <field name="quantity" sum="Total Qty"/>
+                                    <field name="unit_price"
+                                           force_save="1"
+                                           widget="monetary"/>
+                                    <field name="vendor_id"
+                                           readonly="1"
+                                           force_save="1"
+                                           domain="[('supplier_rank', '>', 0)]"
+                                           options="{'no_create': True}"/>
+                                    <field name="subtotal"
+                                           sum="Subtotal"
+                                           widget="monetary"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <!-- Approval History -->
+                        <page string="📋 Approval History" name="history">
+                            <group>
+                                <field name="create_uid" string="Created By"/>
+                                <field name="create_date" string="Created On"/>
+                                <field name="write_uid" string="Last Updated By"/>
+                                <field name="write_date" string="Last Updated On"/>
+                            </group>
+                        </page>
+
+                        <!-- Cancellation Details -->
+                        <page string="❌ Cancellation"
+                              name="cancellation"
+                              >
+                            <group>
+                                <field name="cancel_reason"
+                                       nolabel="1"
+                                       placeholder="Reason for cancellation..."/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,17 @@
+<odoo>
+    <record id="product_template_form_semi_initial" model="ir.ui.view">
+        <field name="name">product.template.form.semi.initial</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+             <xpath expr="//group[.//field[@name='default_code']]" position="inside">
+                 <group>
+                     <field name="lot_initial"
+
+                       placeholder="e.g. INITIAL"/>
+                 </group>
+
+            </xpath>
+        </field>
+    </record>
+</odoo>

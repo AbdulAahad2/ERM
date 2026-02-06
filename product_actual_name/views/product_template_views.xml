@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Product Template Form View - Add actual_name field -->
+    <record id="product_template_form_actual_name" model="ir.ui.view">
+        <field name="name">product.template.form.actual.name</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='general_information']//field[@name='product_tooltip']" position="after">
+                <field name="actual_name" placeholder="e.g., Cream" readonly="0" string="Actual Name"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Product Template Search View - Add actual_name to search -->
+    <record id="product_template_search_actual_name" model="ir.ui.view">
+        <field name="name">product.template.search.actual.name</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_search_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="actual_name" string="Actual Name"
+                       filter_domain="['|', '|', ('actual_name','ilike',self), ('name','ilike',self), ('default_code','ilike',self)]"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Product Variant (product.product) Search View -->
+    <record id="product_product_search_actual_name" model="ir.ui.view">
+        <field name="name">product.product.search.actual.name</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_search_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="actual_name" string="Actual Name"
+                       filter_domain="['|', '|', ('actual_name','ilike',self), ('name','ilike',self), ('default_code','ilike',self)]"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Product Variant Tree View - show actual_name column -->
+    <record id="product_product_tree_actual_name" model="ir.ui.view">
+        <field name="name">product.product.tree.actual.name</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_product_tree_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="actual_name" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

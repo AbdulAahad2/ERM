@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Stock Picking Form View - Add context to product_id in move_ids_without_package -->
+    <record id="stock_picking_form_actual_name" model="ir.ui.view">
+        <field name="name">stock.picking.form.actual.name</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <!-- Add context to product_id field in move_ids_without_package (Operations tab) -->
+            <xpath expr="//field[@name='move_ids_without_package']//field[@name='product_id']" position="attributes">
+                <attribute name="context">{
+                    'show_actual_name': True,
+                    'default_company_id': company_id,
+                    'default_picking_id': id
+                }</attribute>
+            </xpath>
+
+            <!-- Add actual_name field after product_id in Operations tab -->
+            <xpath expr="//field[@name='move_ids_without_package']//field[@name='product_id']" position="after">
+                <field name="product_actual_name" optional="show" string="Actual Name"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Stock Move Tree View - Add actual_name column -->
+    <record id="stock_move_tree_actual_name" model="ir.ui.view">
+        <field name="name">stock.move.tree.actual.name</field>
+        <field name="model">stock.move</field>
+        <field name="inherit_id" ref="stock.view_move_tree"/>
+        <field name="arch" type="xml">
+            <!-- Add context to product_id -->
+            <xpath expr="//field[@name='product_id']" position="attributes">
+                <attribute name="context">{'show_actual_name': True}</attribute>
+            </xpath>
+
+            <!-- Add actual_name column -->
+            <xpath expr="//field[@name='product_id']" position="after">
+                <field name="product_actual_name" optional="show" string="Actual Name"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Stock Picking Type Operation Tree View -->
+    <record id="stock_picking_type_move_tree_actual_name" model="ir.ui.view">
+        <field name="name">stock.picking.type.move.tree.actual.name</field>
+        <field name="model">stock.move</field>
+        <field name="inherit_id" ref="stock.view_picking_move_tree"/>
+        <field name="arch" type="xml">
+            <!-- Add context to product_id -->
+            <xpath expr="//field[@name='product_id']" position="attributes">
+                <attribute name="context">{'show_actual_name': True}</attribute>
+            </xpath>
+
+            <!-- Add actual_name column -->
+            <xpath expr="//field[@name='product_id']" position="after">
+                <field name="product_actual_name" optional="show" string="Actual Name"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

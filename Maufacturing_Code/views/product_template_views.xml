@@ -1,0 +1,15 @@
+<odoo>
+    <record id="product_template_form_semi_initial" model="ir.ui.view">
+        <field name="name">product.template.form.semi.initial</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='default_code']" position="after">
+                <field name="semi_finish_initial" string="Initial"/>
+            </xpath>
+            <xpath expr="//field[@name='default_code']" position="after">
+                <field name="is_semi_product" widget="boolean_toggle" />
+            </xpath>
+        </field>
+    </record>
+</odoo>

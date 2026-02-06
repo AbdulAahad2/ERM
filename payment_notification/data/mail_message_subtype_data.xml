@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Message Subtype for Payment Due Notifications -->
+        <record id="mt_payment_due_reminder" model="mail.message.subtype">
+            <field name="name">Payment Due Reminder</field>
+            <field name="description">Payment due notification</field>
+            <field name="res_model">account.move</field>
+            <field name="default" eval="True"/>
+            <field name="internal" eval="False"/>
+        </record>
+    </data>
+</odoo>

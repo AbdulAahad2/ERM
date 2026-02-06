@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Scheduled Action: Check Payment Due Dates -->
+        <record id="ir_cron_check_payment_due" model="ir.cron">
+            <field name="name">Payment Due Notifications: Check Due Dates</field>
+            <field name="model_id" ref="account.model_account_move"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_check_payment_due_dates()</field>
+            <field name="interval_number">60</field>
+            <field name="interval_type">minutes</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- Email Template for Payment Due Notification -->
+        <record id="email_template_payment_due" model="mail.template">
+            <field name="name">Payment Due Notification</field>
+            <field name="model_id" ref="account.model_account_move"/>
+            <field name="subject">Payment Due Reminder: ${object.name}</field>
+            <field name="email_from">${(object.company_id.email or user.email)|safe}</field>
+            <field name="email_to">${object.invoice_user_id.email or user.email}</field>
+            <field name="body_html" type="html">
+                <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f5f5f5;">
+                    <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <h2 style="color: #FF9800; margin-top: 0;">⚠️ Payment Due Reminder</h2>
+                        
+                        <p>Hello,</p>
+                        
+                        <p>This is an automated reminder that the following payment is due <strong>${ctx.get('time_desc', 'soon')}</strong>:</p>
+                        
+                        <div style="background-color: #fff3e0; padding: 15px; border-left: 4px solid #FF9800; margin: 20px 0;">
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <tr>
+                                    <td style="padding: 5px 0;"><strong>Document:</strong></td>
+                                    <td style="padding: 5px 0;">${object.name}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 5px 0;"><strong>Partner:</strong></td>
+                                    <td style="padding: 5px 0;">${object.partner_id.name}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 5px 0;"><strong>Amount Due:</strong></td>
+                                    <td style="padding: 5px 0; font-size: 18px; color: #d32f2f;">
+                                        ${object.amount_residual} ${object.currency_id.name}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 5px 0;"><strong>Due Date:</strong></td>
+                                    <td style="padding: 5px 0;">${object.invoice_date_due}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        
+                        <p>Please ensure that payment is processed on time to avoid any delays or penalties.</p>
+                        
+                        <div style="margin-top: 30px; text-align: center;">
+                            <a href="${object.get_portal_url()}" 
+                               style="background-color: #1976D2; color: white; padding: 12px 30px; 
+                                      text-decoration: none; border-radius: 4px; display: inline-block;">
+                                View Document
+                            </a>
+                        </div>
+                        
+                        <p style="margin-top: 30px; color: #666; font-size: 12px;">
+                            This is an automated notification from ${object.company_id.name}
+                        </p>
+                    </div>
+                </div>
+            </field>
+        </record>
+    </data>
+</odoo>

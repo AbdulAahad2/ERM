@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Configuration Form View -->
+        <record id="view_payment_notification_config_form" model="ir.ui.view">
+            <field name="name">payment.notification.config.form</field>
+            <field name="model">payment.notification.config</field>
+            <field name="arch" type="xml">
+                <form string="Payment Notification Configuration">
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="toggle_active" type="object"
+                                    class="oe_stat_button" icon="fa-archive">
+                                <field name="active" widget="boolean_button"
+                                       options='{"terminology": "active"}'/>
+                            </button>
+                        </div>
+                        <group>
+                            <group string="Notification Timing">
+                                <label for="notification_value" string="Send Notification"/>
+                                <div class="o_row">
+                                    <field name="notification_value"/>
+                                    <field name="notification_unit" nolabel="1"/>
+                                    <span>before due date</span>
+                                </div>
+                            </group>
+                            <group string="System Settings">
+                                <field name="company_id" groups="base.group_multi_company"/>
+                                <field name="cron_interval"
+                                       help="How often the system checks for payments. Set to 1-5 minutes for testing."/>
+                            </group>
+                        </group>
+                        <group string="Testing Guide">
+                            <div class="alert alert-info" role="alert">
+                                <h4>Testing Instructions:</h4>
+                                <ol>
+                                    <li><strong>For Quick Testing:</strong>
+                                        <ul>
+                                            <li>Set notification to 5-10 minutes</li>
+                                            <li>Set check frequency to 1 minute</li>
+                                            <li>Create invoice with due date in 10 minutes from now</li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>For Hour Testing:</strong>
+                                        <ul>
+                                            <li>Set notification to 2 hours</li>
+                                            <li>Set check frequency to 30 minutes</li>
+                                            <li>Create invoice with due date in 2 hours</li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>For Production:</strong>
+                                        <ul>
+                                            <li>Set notification to 2 days</li>
+                                            <li>Set check frequency to 60 minutes (or daily)</li>
+                                        </ul>
+                                    </li>
+                                    <li>Use the "Test Notification" button on invoices for instant testing</li>
+                                    <li><strong>Check Logs:</strong> Go to Settings → Technical → Logging to see if cron is running</li>
+                                </ol>
+                            </div>
+                        </group>
+                        <group>
+                            <button name="action_run_cron_now" type="object"
+                                    string="Run Check Now (Manual)"
+                                    class="btn-primary"
+                                    help="Manually trigger the payment notification check"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Configuration Tree View -->
+        <record id="view_payment_notification_config_tree" model="ir.ui.view">
+            <field name="name">payment.notification.config.tree</field>
+            <field name="model">payment.notification.config</field>
+            <field name="arch" type="xml">
+                <list string="Payment Notification Configurations">
+                    <field name="notification_value"/>
+                    <field name="notification_unit"/>
+                    <field name="cron_interval"/>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                    <field name="active"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Configuration Action -->
+        <record id="action_payment_notification_config" model="ir.actions.act_window">
+            <field name="name">Payment Notification Settings</field>
+            <field name="res_model">payment.notification.config</field>
+            <field name="view_mode">list,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Configure Payment Notification Settings
+                </p>
+                <p>
+                    Set when to send payment reminders before the due date.
+                    You can choose days, hours, or minutes for easy testing.
+                </p>
+            </field>
+        </record>
+
+        <!-- Menu Item -->
+        <menuitem id="menu_payment_notification_config"
+                  name="Payment Notifications"
+                  parent="account.menu_finance_configuration"
+                  action="action_payment_notification_config"
+                  sequence="100"/>
+    </data>
+</odoo>

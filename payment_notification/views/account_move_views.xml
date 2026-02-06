@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Add notification fields to invoice form view -->
+        <record id="view_move_form_inherit_payment_notification" model="ir.ui.view">
+            <field name="name">account.move.form.inherit.payment.notification</field>
+            <field name="model">account.move</field>
+            <field name="inherit_id" ref="account.view_move_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='payment_state']" position="after">
+                    <field name="notification_sent" readonly="1"
+                           invisible="payment_state not in ['not_paid', 'partial']"/>
+                    <field name="last_notification_check" readonly="1"
+                           invisible="payment_state not in ['not_paid', 'partial']"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Add button to manually trigger notification -->
+        <record id="view_move_form_inherit_payment_notification_button" model="ir.ui.view">
+            <field name="name">account.move.form.inherit.payment.notification.button</field>
+            <field name="model">account.move</field>
+            <field name="inherit_id" ref="account.view_move_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//button[@name='action_invoice_sent']" position="after">
+                    <button name="action_test_notification"
+                            type="object"
+                            string="Test Notification"
+                            class="btn-warning"
+                            invisible="state != 'posted' or payment_state not in ['not_paid', 'partial']"
+                            groups="account.group_account_user"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

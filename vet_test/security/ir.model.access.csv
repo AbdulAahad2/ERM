@@ -27,3 +27,5 @@ access_vet_animal_history_service_vet_manager,vet.animal.history.service vet man
 access_vet_test_combo_selection_wizard_user,vet.test.combo.selection.wizard.user,model_vet_test_combo_selection_wizard,base.group_user,1,1,1,1
 access_vet_test_combo_selection_wizard_line_user,vet.test.combo.selection.wizard.line.user,model_vet_test_combo_selection_wizard_line,base.group_user,1,1,1,1
 access_vet_animal_visit_payment_wizard_user,vet.animal.visit.payment.wizard.user,model_vet_animal_visit_payment_wizard,base.group_user,1,1,1,1
+access_vet_daily_sales_report_wizard_user,access.vet.daily.sales.report.wizard.user,model_vet_daily_sales_report_wizard,vet_test.group_vet_limited_user,1,1,1,1
+access_vet_daily_sales_report_wizard_manager,access.vet.daily.sales.report.wizard.manager,model_vet_daily_sales_report_wizard,vet_test.group_vet_manager,1,1,1,1

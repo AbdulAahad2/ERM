@@ -1,4 +1,293 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <odoo>
+  <!-- ===================== FORM VIEW - MUST COME FIRST ===================== -->
+  <record id="view_vet_animal_visit_form" model="ir.ui.view">
+      <field name="name">vet.animal.visit.form</field>
+      <field name="model">vet.animal.visit</field>
+      <field name="priority" eval="1"/>
+      <field name="arch" type="xml">
+          <form string="Animal Visit">
+              <header>
+                  <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,done,cancel"/>
+                  
+                  <!-- Create Invoice Button -->
+                  <button name="action_create_invoice" 
+                          string="Create Invoice" 
+                          type="object" 
+                          class="btn-primary"
+                          invisible="state == 'cancel' or invoice_ids"/>
+                  
+                  <!-- Pay Invoice Button -->
+                  <button name="action_pay_invoice" 
+                          type="object" 
+                          string="Pay Invoice"
+                          class="btn-success"
+                          invisible="state == 'cancel'"/>
+                  
+                  <!-- Print Receipt Button -->
+                  <button name="action_print_visit_receipt" 
+                          type="object" 
+                          string="Print Receipt" 
+                          class="btn-primary"
+                          invisible="state == 'cancel'"/>
+                  
+                  <!-- Cancel Button -->
+                  <button name="action_cancel" 
+                          string="Cancel Visit"
+                          type="object" 
+                          class="btn-danger"
+                          invisible="state not in ['confirmed']"
+                          confirm="Are you sure you want to cancel this visit? This action cannot be undone."/>
+                  
+                  <!-- Confirm Button -->
+                  <!-- <button name="action_confirm" 
+                          string="Confirm Visit" 
+                          type="object" 
+                          class="btn-primary"
+                          invisible="state != 'draft'"/> -->
+              </header>
+
+              <sheet>
+                  <!-- Title and Branch Info -->
+                  <div class="oe_title mb-2">
+                      <h2><field name="name" placeholder="Visit Number" readonly="1"/></h2>
+                      <div class="o_row">
+                          <label for="company_id" string="Branch:"/>
+                          <field name="company_id" 
+                                 options="{'no_create': True, 'no_open': True}" 
+                                 readonly="1"
+                                 class="oe_inline"/>
+                      </div>
+                  </div>
+                  
+                  <!-- Status Badges -->
+                  <div class="oe_button_box" name="button_box">
+                      <button name="action_view_invoices" 
+                              type="object" 
+                              class="oe_stat_button" 
+                              icon="fa-file-text-o"
+                              invisible="not invoice_ids">
+                          <field name="payment_state" widget="label_selection" 
+                                 options="{'classes': {'paid': 'success', 'partial': 'warning', 'not_paid': 'danger'}}"/>
+                          <span class="o_stat_text">Payment Status</span>
+                      </button>
+                  </div>
+
+                  <!-- Main Two-Column Layout -->
+                  <group>
+                      <!-- LEFT COLUMN -->
+                      <group>
+                          <!-- Owner Information -->
+                          <group string="Owner Information" colspan="2">
+                              <field name="owner_id"/>
+                              <label for="contact_number" string="Contact Number"/>
+                              <div class="o_row">
+                                  <field name="contact_number" 
+                                         placeholder="Enter contact starting from 3"
+                                         class="oe_inline" />
+                              </div>
+                              <field name="animal_ids" 
+                                     widget="many2many_tags" 
+                                     string="Owner's Animals" 
+                                     domain="[('owner_id', '=', owner_id)]" 
+                                     readonly="1"
+                                     invisible="not owner_id"/>
+                              
+                              <field name="selected_animal_id" 
+                                     string="Select Animal" 
+                                     domain="[('id', 'in', animal_ids)]"
+                                     required="1"
+                                     options="{'no_open': True}"
+                                     placeholder="Select an animal..."
+                                     context="{
+                                         'default_owner_id': owner_id,
+                                         'default_contact_number': contact_number,
+                                         'default_owner_name': owner_id and owner_id.name or 'New Owner'
+                                     }"/>
+                              
+                              <field name="owner_unpaid_balance" 
+                                     readonly="1"
+                                     widget="monetary"
+                                     invisible="owner_unpaid_balance == 0"/>
+                          </group>
+
+                          <!-- General Info -->
+                          <group string="General Info" colspan="2">
+                              <field name="animal_pic" 
+                                     widget="image" 
+                                     class="oe_avatar" 
+                                     options="{'size': [90, 90]}"
+                                     invisible="not animal_pic"/>
+                              
+                              <field name="animal_id" 
+                                     string="Animal ID" 
+                                     readonly="1"
+                                     required="1"
+                                     options="{'no_create': True, 'no_open': True}"/>
+                              
+                              <field name="animal_display_name" readonly="1"/>
+                              <field name="date" readonly="1"/>
+                              
+                              <field name="doctor_id" 
+                                     required="1"
+                                     domain="[('company_id', '=', company_id)]"
+                                     options="{'no_create': True}"
+                                     context="{'default_company_id': company_id}"/>
+                              
+                              <field name="notes"/>
+                              <field name="treatment_charge" string="Treatment Charge"/>
+                          </group>
+                      </group>
+
+                      <!-- RIGHT COLUMN: Receipt + Totals -->
+                      <group>
+                          <!-- Receipt Section -->
+                          <group string="Receipt" colspan="2">
+                              <field name="receipt_lines" nolabel="1">
+                                  <list editable="bottom">
+                                      <field name="service_id" string="Item"/>
+                                      <field name="quantity" string="Qty"/>
+                                      <field name="original_price" string="List Price" readonly="1"/>
+                                      <field name="line_discount" string="Disc %"/>
+                                      <field name="price_unit" string="Final Price" readonly="1"/>
+                                      <field name="subtotal" string="Subtotal" readonly="1"/>
+                                  </list>
+                              </field>
+                          </group>
+
+                          <!-- Totals Section -->
+                          <group string="Totals" colspan="2">
+                              <field name="subtotal" string="Sub Total" readonly="1" widget="monetary"/>
+                              <field name="treatment_charge" string="Treatment Charges" readonly="1" widget="monetary"/>
+                              <field name="discount_percent" string="Discount (%)"/>
+                              <field name="discount_fixed" string="Discount (Fixed)"/>
+                              <field name="total_amount" 
+                                     string="Total Amount" 
+                                     readonly="1" 
+                                     widget="monetary" 
+                                     class="oe_subtotal_footer_separator"/>
+                          </group>
+                      </group>
+                  </group>
+
+                  <!-- NOTEBOOK FOR SERVICES / TESTS / MEDICINES -->
+                  <notebook>
+                      <page string="Services">
+                          <field name="service_line_ids">
+                              <list editable="bottom">
+                                  <field name="service_id" domain="[('service_type','=','service')]"/>
+                                  <field name="quantity"/>
+                                  <field name="original_price" string="List Price" readonly="1"/>
+                                  <field name="line_discount" string="Disc %"/>
+                                  <field name="price_unit" string="Final Price" readonly="1"/>
+                                  <field name="subtotal" readonly="1"/>
+                              </list>
+                          </field>
+                      </page>
+                      
+                      <page string="Tests">
+                          <field name="test_line_ids">
+                              <list editable="bottom">
+                                  <field name="service_id" string="Test" domain="[('service_type','=','test')]"/>
+                                  <field name="quantity"/>
+                                  <field name="original_price" string="List Price" readonly="1"/>
+                                  <field name="line_discount" string="Disc %"/>
+                                  <field name="price_unit" string="Final Price" readonly="1"/>
+                                  <field name="subtotal" readonly="1"/>
+                              </list>
+                          </field>
+                      </page>
+                      
+                      <page string="Vaccines">
+                          <field name="medicine_line_ids">
+                              <list editable="bottom">
+                                  <field name="service_id" string="Vaccine" domain="[('service_type','=','vaccine')]"/>
+                                  <field name="quantity"/>
+                                  <field name="original_price" string="List Price" readonly="1"/>
+                                  <field name="line_discount" string="Disc %"/>
+                                  <field name="price_unit" string="Final Price" readonly="1"/>
+                                  <field name="subtotal" readonly="1"/>
+                              </list>
+                          </field>
+                      </page>
+                      
+                      <!-- Invoice History Tab -->
+                      <page string="Invoices" invisible="not invoice_ids">
+                          <field name="invoice_ids" readonly="1">
+                              <list>
+                                  <field name="name" string="Invoice #"/>
+                                  <field name="invoice_date"/>
+                                  <field name="amount_total"/>
+                                  <field name="amount_residual" string="Due Amount"/>
+                                  <field name="payment_state"/>
+                                  <field name="state"/>
+                              </list>
+                          </field>
+                      </page>
+                  </notebook>
+              </sheet>  
+          </form>
+      </field>
+  </record>
+
+  <!-- ===================== LIST VIEW ===================== -->
+  <record id="view_vet_animal_visit_list" model="ir.ui.view">
+    <field name="name">vet.animal.visit.list</field>
+    <field name="model">vet.animal.visit</field>
+    <field name="arch" type="xml">
+      <list string="Animal Visits" 
+            create="true" 
+            delete="true"
+            decoration-muted="state == 'cancel'"
+            decoration-success="state == 'done'"
+            decoration-info="state == 'confirmed'">
+            
+        <field name="name"/>
+        <field name="company_id" string="Branch" optional="show"/>
+        <field name="date"/>
+        <field name="animal_id" string="Animal ID"/>
+        <field name="animal_display_name" string="Animal Name"/>
+        <field name="owner_id"/>
+        <field name="doctor_id"/>
+        <field name="state" 
+               widget="badge" 
+               decoration-success="state == 'done'"
+               decoration-info="state == 'confirmed'"
+               decoration-warning="state == 'draft'"
+               decoration-danger="state == 'cancel'"/>
+        <field name="payment_state" 
+               widget="badge"
+               decoration-success="payment_state == 'paid'"
+               decoration-warning="payment_state == 'partial'"
+               decoration-danger="payment_state == 'not_paid'"/>
+        <field name="total_amount"/>
+        
+        <!-- Action Buttons -->
+        <button name="action_confirm" 
+                type="object" 
+                string="Confirm" 
+                icon="fa-check"
+                invisible="state != 'draft'"
+                class="btn-primary"/>
+        
+        <button name="action_cancel" 
+                type="object" 
+                string="Cancel" 
+                icon="fa-times"
+                invisible="state not in ['draft', 'confirmed']"
+                confirm="Are you sure you want to cancel this visit?"
+                class="btn-danger"/>
+        
+        <button name="action_create_invoice" 
+                type="object" 
+                string="Create Invoice" 
+                icon="fa-file-text"
+                invisible="state == 'cancel' or invoice_ids"
+                class="btn-success"/>
+      </list>
+    </field>
+  </record>
+
   <!-- ===================== KANBAN VIEW ===================== -->
   <record id="view_vet_animal_visit_kanban" model="ir.ui.view">
     <field name="name">vet.animal.visit.kanban</field>
@@ -46,7 +335,7 @@
                 </div>
                 <!-- Right-side info -->
                 <div class="text-end">
-                  <span t-attf-class="badge rounded-pill #{record.state.raw_value == 'done' and 'bg-success' or record.state.raw_value == 'draft' and 'bg-secondary' or 'bg-warning'}">
+                  <span t-attf-class="badge rounded-pill #{record.state.raw_value == 'done' ? 'bg-success' : record.state.raw_value == 'cancel' ? 'bg-danger' : record.state.raw_value == 'draft' ? 'bg-secondary' : 'bg-warning'}">
                     <t t-esc="record.state.value"/>
                   </span>
                   <div class="fw-bold mt-1 fs-5">
@@ -61,7 +350,79 @@
     </field>
   </record>
 
-  <!-- ===================== PAYMENT WIZARD ACTION ===================== -->
+  <!-- ===================== SEARCH VIEW ===================== -->
+  <record id="view_vet_animal_visit_search" model="ir.ui.view">
+    <field name="name">vet.animal.visit.search</field>
+    <field name="model">vet.animal.visit</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="name"/>
+        <field name="date"/>
+        <field name="animal_id"/>
+        <field name="owner_id"/>
+        <field name="doctor_id"/>
+        <field name="company_id" string="Branch"/>
+        <field name="contact_number" string="Contact Number"/>
+
+        <!-- Filters -->
+        <filter name="my_branch" string="My Branch" 
+                domain="[('company_id', '=', allowed_company_ids[0])]"
+                help="Show only visits from my current branch"/>
+        <filter name="all_branches" string="All Branches" 
+                domain="[]"
+                help="Show visits from all branches"/>
+        <separator/>
+        
+        <!-- Payment Status Filters -->
+        <filter name="unpaid_invoices" string="Unpaid" 
+                domain="[('payment_state','=','not_paid')]"/>
+        <filter name="partial_paid" string="Partially Paid" 
+                domain="[('payment_state','=','partial')]"/>
+        <filter name="paid_invoices" string="Paid" 
+                domain="[('payment_state','=','paid')]"/>
+        <separator/>
+        
+        <!-- State Filters -->
+        <filter name="draft" string="Draft" 
+                domain="[('state','=','draft')]"/>
+        <filter name="confirmed" string="Confirmed" 
+                domain="[('state','=','confirmed')]"/>
+        <filter name="done" string="Done" 
+                domain="[('state','=','done')]"/>
+        <filter name="cancelled" string="Cancelled" 
+                domain="[('state','=','cancel')]"/>
+        <separator/>
+        
+        <!-- Quick Date Filters -->
+        <filter name="today" string="Today" 
+                domain="[('date','&gt;=',context_today().strftime('%Y-%m-%d 00:00:00')),
+                        ('date','&lt;=',context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
+        <filter name="this_week" string="This Week" 
+                domain="[('date','&gt;=', (context_today() - datetime.timedelta(days=context_today().weekday())).strftime('%Y-%m-%d')),
+                        ('date','&lt;=', (context_today() + datetime.timedelta(days=6-context_today().weekday())).strftime('%Y-%m-%d'))]"/>
+        <filter name="this_month" string="This Month" 
+                domain="[('date','&gt;=', time.strftime('%Y-%m-01'))]"/>
+        
+        <!-- Group By -->
+        <group expand="0" string="Group By">
+          <filter name="branch_group" string="Branch" 
+                  context="{'group_by':'company_id'}"/>
+          <filter name="owner_name" string="Owner" 
+                  context="{'group_by':'owner_id'}"/>
+          <filter name="doctor_name" string="Doctor" 
+                  context="{'group_by':'doctor_id'}"/>
+          <filter name="payment_state_group" string="Payment State" 
+                  context="{'group_by':'payment_state'}"/>
+          <filter name="state_group" string="Visit State" 
+                  context="{'group_by':'state'}"/>
+          <filter name="date_group" string="Date" 
+                  context="{'group_by':'date:day'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+
+  <!-- ===================== PAYMENT WIZARD VIEW ===================== -->
   <record id="view_vet_animal_visit_payment_wizard_form" model="ir.ui.view">
     <field name="name">vet.animal.visit.payment.wizard.form</field>
     <field name="model">vet.animal.visit.payment.wizard</field>
@@ -87,8 +448,15 @@
             <field name="current_invoice_id" readonly="1" string="Invoice"/>
             <field name="current_invoice_amount" 
                    readonly="1" 
-                   string="Amount Due"
+                   string="Invoice Balance"
                    widget="monetary"/>
+            
+            <!-- Info banner for partial payment -->
+            <div class="alert alert-info" role="alert" colspan="2">
+              <i class="fa fa-info-circle"/> 
+              <strong>Payment Amount:</strong> You can pay any amount up to the invoice balance. 
+              Partial payments are allowed.
+            </div>
           </group>
           
           <!-- Other Invoices Selection -->
@@ -106,6 +474,13 @@
                 <field name="payment_state"/>
               </list>
             </field>
+            
+            <!-- Info banner for partial payment -->
+            <div class="alert alert-info" role="alert" colspan="2">
+              <i class="fa fa-info-circle"/> 
+              <strong>Payment Amount:</strong> You can pay any amount up to the total balance. 
+              Payment will be distributed across selected invoices in chronological order.
+            </div>
           </group>
           
           <!-- All Invoices Info -->
@@ -113,6 +488,7 @@
                  invisible="payment_mode != 'all'">
             <div class="alert alert-info" role="alert">
               <p>This will pay all unpaid invoices for this customer in chronological order.</p>
+              <p>You can enter any amount up to the total unpaid balance.</p>
             </div>
             <field name="owner_unpaid_balance" 
                    readonly="1" 
@@ -120,13 +496,16 @@
                    widget="monetary"/>
           </group>
           
-          <!-- Payment Details -->
+          <!-- Payment Details - ALWAYS EDITABLE -->
           <group string="Payment Details">
             <field name="amount" 
                    string="Payment Amount"
                    widget="monetary"
-                   readonly="payment_mode in ['current', 'all']"
-                   force_save="1"/>
+                   force_save="1"
+                   required="1"
+                   class="oe_inline oe_edit_only"
+                   placeholder="Enter amount to pay..."/>
+            
             <field name="journal_id" 
                    string="Payment Journal"
                    required="1"
@@ -141,6 +520,18 @@
                invisible="other_unpaid_count == 0 or payment_mode != 'current'">
             <strong>Note:</strong> This customer has <field name="other_unpaid_count" readonly="1"/> other unpaid invoice(s). 
             You can select "Pay Other Invoices" mode to pay them.
+          </div>
+          
+          <!-- Payment Amount Guide -->
+          <div class="alert alert-success" role="alert">
+            <i class="fa fa-check-circle"/> 
+            <strong>Flexible Payments:</strong>
+            <ul class="mb-0 mt-2">
+              <li>Enter any amount between 0 and the invoice balance</li>
+              <li>Partial payments will mark invoices as "Partially Paid"</li>
+              <li>Full payments will mark invoices as "Paid"</li>
+              <li>You can make multiple partial payments over time</li>
+            </ul>
           </div>
         </sheet>
         
@@ -164,236 +555,39 @@
     <field name="context">{'default_visit_id': active_id}</field>
   </record>
 
-  <!-- ===================== FORM VIEW ===================== -->
-  <record id="view_vet_animal_visit_form" model="ir.ui.view">
-      <field name="name">vet.animal.visit.form</field>
-      <field name="model">vet.animal.visit</field>
-      <field name="arch" type="xml">
-          <form string="Animal Visit">
-              <sheet>
-                  <header>
-                      <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,done,cancel"/>
-                      <button name="action_create_invoice" string="Create Invoice" type="object" class="btn-primary"/>
-                      <button name="action_pay_invoice" type="object" string="Pay Invoice"/>
-                      <button name="action_print_visit_receipt" type="object" string="Print Receipt" class="btn-primary"/>
-                  </header>
-
-                  <!-- Title and Branch Info -->
-                  <div class="oe_title mb-2">
-                      <h2><field name="name" placeholder="Visit Number"/></h2>
-                      <div class="o_row">
-                          <label for="company_id" string="Branch:"/>
-                          <field name="company_id" 
-                                 options="{'no_create': True, 'no_open': True}" 
-                                 readonly="1"
-                                 class="oe_inline"/>
-                      </div>
-                  </div>
-
-                  <!-- Main Two-Column Layout -->
-                  <group>
-                      <!-- LEFT COLUMN - Vertically Stacked Sections -->
-                      <group>
-                          <!-- Owner Information -->
-                          <group string="Owner Information" class="oe_title" colspan="2">
-                              <field name="owner_id" on_change="1"/>
-                              <field name="contact_number" on_change="1"/>
-                              <field name="animal_ids" widget="many2many_tags" string="Owner's Animals" domain="[('owner_id', '=', owner_id)]" readonly="1"/>
-                              
-                              <!-- Selected Animal ID -->
-                              <field name="selected_animal_id" 
-                                     string="Select Animal" 
-                                     domain="[('id', 'in', animal_ids)]"
-                                     required="1"
-                                     options="{'no_open': True}"
-                                     placeholder="Select an animal..."
-                                     context="{
-                                         'default_owner_id': owner_id,
-                                         'default_contact_number': contact_number,
-                                         'default_owner_name': owner_id and owner_id.name or 'New Owner'
-                                     }"/>
-                              
-                              <field name="owner_unpaid_balance" readonly="1"/>
-                          </group>
-
-                          <!-- General Info -->
-                          <group string="General Info" colspan="2">
-                              <field name="animal_pic" widget="image" class="oe_avatar" options="{'size': [90, 90]}"/>
-                              
-                              <field name="animal_id" 
-                                     string="Animal ID" 
-                                     readonly="1"
-                                     required="1"
-                                     options="{'no_create': True, 'no_open': True}"/>
-                              
-                              <field name="animal_display_name" readonly="1"/>
-                              <field name="date" readonly="1"/>
-                              
-                              <field name="doctor_id" 
-                                     required="1"
-                                     domain="[('company_id', '=', company_id)]"
-                                     options="{'no_create': True}"
-                                     context="{'default_company_id': company_id}"/>
-                              
-                              <field name="notes"/>
-                              <field name="treatment_charge" string="Treatment Charge"/>
-                          </group>
-                      </group>
-
-                      <!-- RIGHT COLUMN: Receipt + Totals -->
-                      <group>
-                          <!-- Receipt Section -->
-                          <group string="Receipt" colspan="2">
-                              <field name="receipt_lines" nolabel="1">
-                                  <list editable="bottom">
-                                      <field name="service_id" string="Item"/>
-                                      <field name="quantity" string="Qty"/>
-                                      <field name="original_price" string="List Price" readonly="1"/>
-                                      <field name="line_discount" string="Disc %"/>
-                                      <field name="price_unit" string="Final Price" readonly="1"/>
-                                      <field name="subtotal" string="Subtotal" readonly="1"/>
-                                  </list>
-                              </field>
-                          </group>
-
-                          <!-- Totals Section - Full Width of Right Column -->
-                          <group string="Totals" colspan="2">
-                              <field name="subtotal" string="Sub Total" readonly="1" widget="monetary" currency_field="currency_id"/>
-                              <field name="treatment_charge" string="Treatment Charges" readonly="1" widget="monetary" currency_field="currency_id"/>
-                              <field name="discount_percent" string="Discount (%)" widget="monetary" currency_field="currency_id"/>
-                              <field name="discount_fixed" string="Discount (Fixed)" widget="monetary" currency_field="currency_id"/>
-                              <field name="total_amount" string="Total Amount" readonly="1" widget="monetary" class="oe_subtotal_footer_separator" currency_field="currency_id"/>
-                          </group>
-                      </group>
-                  </group>
-
-                  <!-- NOTEBOOK FOR SERVICES / TESTS / MEDICINES -->
-                  <notebook>
-                      <page string="Services">
-                          <field name="service_line_ids">
-                              <list editable="bottom">
-                                  <field name="service_id" domain="[('service_type','=','service')]"/>
-                                  <field name="quantity"/>
-                                  <field name="original_price" string="List Price" readonly="1"/>
-                                  <field name="line_discount" string="Disc %"/>
-                                  <field name="price_unit" string="Final Price" readonly="1"/>
-                                  <field name="subtotal" readonly="1"/>
-                              </list>
-                          </field>
-                      </page>
-                      <page string="Tests">
-                          <field name="test_line_ids">
-                              <list editable="bottom">
-                                  <field name="service_id" string="Test" domain="[('service_type','=','test')]"/>
-                                  <field name="quantity"/>
-                                  <field name="original_price" string="List Price" readonly="1"/>
-                                  <field name="line_discount" string="Disc %"/>
-                                  <field name="price_unit" string="Final Price" readonly="1"/>
-                                  <field name="subtotal" readonly="1"/>
-                              </list>
-                          </field>
-                      </page>
-                      <page string="Vaccines">
-                          <field name="medicine_line_ids">
-                              <list editable="bottom">
-                                  <field name="service_id" string="Vaccine" domain="[('service_type','=','vaccine')]"/>
-                                  <field name="quantity"/>
-                                  <field name="original_price" string="List Price" readonly="1"/>
-                                  <field name="line_discount" string="Disc %"/>
-                                  <field name="price_unit" string="Final Price" readonly="1"/>
-                                  <field name="subtotal" readonly="1"/>
-                              </list>
-                          </field>
-                      </page>
-                  </notebook>
-              </sheet>
-          </form>
-      </field>
-  </record>
-
-  <!-- ===================== LIST VIEW ===================== -->
-  <record id="view_vet_animal_visit_list" model="ir.ui.view">
-    <field name="name">vet.animal.visit.list</field>
-    <field name="model">vet.animal.visit</field>
-    <field name="arch" type="xml">
-      <list string="Animal Visits" create="true" delete="true">
-        <field name="name"/>
-        <field name="company_id" string="Branch" optional="show"/>
-        <field name="date"/>
-        <field name="animal_id" string="Animal ID"/>
-        <field name="animal_display_name" string="Animal Name"/>
-        <field name="owner_id"/>
-        <field name="doctor_id"/>
-        <field name="state"/>
-        <field name="payment_state"/>
-        <field name="total_amount"/>
-      </list>
-    </field>
-  </record>
-
-  <!-- ===================== SEARCH VIEW ===================== -->
-  <record id="view_vet_animal_visit_search" model="ir.ui.view">
-    <field name="name">vet.animal.visit.search</field>
-    <field name="model">vet.animal.visit</field>
-    <field name="arch" type="xml">
-      <search>
-        <field name="name"/>
-        <field name="date"/>
-        <field name="animal_id"/>
-        <field name="owner_id"/>
-        <field name="doctor_id"/>
-        <field name="company_id" string="Branch"/>
-
-        <!-- New filter for contact number -->
-        <field name="contact_number" string="Contact Number" />
-
-        <!-- Filters -->
-        <filter name="my_branch" string="My Branch" 
-                domain="[('company_id', '=', allowed_company_ids[0])]"
-                help="Show only visits from my current branch"/>
-        <filter name="all_branches" string="All Branches" 
-                domain="[]"
-                help="Show visits from all branches"/>
-        <separator/>
-        <filter name="unpaid_invoices" string="Unpaid" 
-                domain="[('payment_state','=','not_paid')]"/>
-        <filter name="paid_invoices" string="Paid" 
-                domain="[('payment_state','=','paid')]"/>
-        <separator/>
-        <filter name="draft" string="Draft" 
-                domain="[('state','=','draft')]"/>
-        <filter name="confirmed" string="Confirmed" 
-                domain="[('state','=','confirmed')]"/>
-        <filter name="done" string="Done" 
-                domain="[('state','=','done')]"/>
-        
-        <!-- Group By -->
-        <group expand="0" string="Group By">
-          <filter name="branch_group" string="Branch" 
-                  context="{'group_by':'company_id'}"/>
-          <filter name="owner_name" string="Owner" 
-                  context="{'group_by':'owner_id'}"/>
-          <filter name="doctor_name" string="Doctor" 
-                  context="{'group_by':'doctor_id'}"/>
-          <filter name="payment_state" string="Payment State" 
-                  context="{'group_by':'payment_state'}"/>
-          <filter name="state_group" string="State" 
-                  context="{'group_by':'state'}"/>
-        </group>
-      </search>
-    </field>
-  </record>
-
   <!-- ===================== ACTION WINDOW ===================== -->
   <record id="action_vet_animal_visit" model="ir.actions.act_window">
     <field name="name">Animal Visits</field>
     <field name="res_model">vet.animal.visit</field>
     <field name="view_mode">kanban,list,form</field>
+    <field name="view_id" ref="view_vet_animal_visit_kanban"/>
     <field name="search_view_id" ref="view_vet_animal_visit_search"/>
     <field name="domain">[('company_id', '=', allowed_company_ids[0])]</field>
     <field name="context">{
         'default_company_id': allowed_company_ids[0],
         'search_default_my_branch': 1
     }</field>
+  </record>
+
+  <!-- ===================== EXPLICIT VIEW MAPPINGS ===================== -->
+  <record id="action_vet_animal_visit_view_kanban" model="ir.actions.act_window.view">
+    <field name="sequence" eval="1"/>
+    <field name="view_mode">kanban</field>
+    <field name="view_id" ref="view_vet_animal_visit_kanban"/>
+    <field name="act_window_id" ref="action_vet_animal_visit"/>
+  </record>
+
+  <record id="action_vet_animal_visit_view_list" model="ir.actions.act_window.view">
+    <field name="sequence" eval="2"/>
+    <field name="view_mode">list</field>
+    <field name="view_id" ref="view_vet_animal_visit_list"/>
+    <field name="act_window_id" ref="action_vet_animal_visit"/>
+  </record>
+
+  <record id="action_vet_animal_visit_view_form" model="ir.actions.act_window.view">
+    <field name="sequence" eval="3"/>
+    <field name="view_mode">form</field>
+    <field name="view_id" ref="view_vet_animal_visit_form"/>
+    <field name="act_window_id" ref="action_vet_animal_visit"/>
   </record>
 </odoo>

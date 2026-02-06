@@ -1,416 +1,509 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-    <!-- ========================================================= -->
-    <!-- 1. REPORT ACTION -->
-    <!-- ========================================================= -->
-    <record id="action_report_visit_receipt" model="ir.actions.report">
-        <field name="name">Visit Receipt (Thermal)</field>
-        <field name="model">vet.animal.visit</field>
-        <field name="report_type">qweb-html</field>
-        <field name="report_name">vet_test.report_visit_receipt</field>
-        <field name="report_file">vet_test.report_visit_receipt</field>
-        <field name="binding_model_id" ref="vet_test.model_vet_animal_visit"/>
-        <field name="binding_type">report</field>
-    </record>
+  <!-- ========================================================= -->
+  <!-- 1. REPORT ACTION -->
+  <!-- ========================================================= -->
+  <record id="action_report_visit_receipt" model="ir.actions.report">
+    <field name="name">Visit Receipt (Thermal)</field>
+    <field name="model">vet.animal.visit</field>
+    <field name="report_type">qweb-html</field>
+    <field name="report_name">vet_test.report_visit_receipt</field>
+    <field name="report_file">vet_test.report_visit_receipt</field>
+    <field name="binding_model_id" ref="vet_test.model_vet_animal_visit"/>
+    <field name="binding_type">report</field>
+  </record>
 
-    <!-- ========================================================= -->
-    <!-- 2. QWEB TEMPLATE – 80 mm -->
-    <!-- ========================================================= -->
-    <template id="report_visit_receipt">
-        <t t-call="web.html_container">
-            <t t-foreach="docs" t-as="doc">
-                <div class="receipt">
+  <!-- ========================================================= -->
+  <!-- 2. QWEB TEMPLATE – 80 mm -->
+  <!-- ========================================================= -->
+  <template id="report_visit_receipt">
+    <t t-call="web.html_container">
+      <t t-foreach="docs" t-as="doc">
+        <div class="receipt">
 
-                    <!-- ====================== HEADER ====================== -->
-                    <div class="header">
-                        <img t-att-src="image_data_uri(env.company.logo)" class="logo"/>
-                        <div class="clinic-name">Healthy Tails Animal Hospital</div>
-                        <div class="clinic-email">healthytailsanimalhospital@gmail.com</div>
-                        <div class="clinic-contact">Shaheed-e-Millat: 0317-8221777</div>
-                        <div class="clinic-contact">Muslim: 0317-8221223</div>
-                    </div>
+          <!-- ====================== HEADER ====================== -->
+          <div class="header">
+            <img t-att-src="image_data_uri(env.company.logo)" class="logo"/>
+            <div class="clinic-name">Healthy Tails Animal Hospital</div>
+            <div class="clinic-email">healthytailsanimalhospital@gmail.com</div>
+            <div class="clinic-contact">Shaheed-e-Millat: 0317-8221777</div>
+            <div class="clinic-contact">Muslim: 0317-8221223</div>
+          </div>
 
-                    <div class="divider-dashed"></div>
+          <div class="divider-dashed"></div>
 
-                    <!-- ====================== VISIT INFO ====================== -->
-                    <div class="visit-info">
-                        <div class="visit-number"><t t-esc="doc.name"/></div>
-                        <div class="info-row">
-                            <span>Served By:</span>
-                            <span><t t-esc="env.user.name"/></span>
-                        </div>
-                        <div class="info-row">
-                            <span>Doctor:</span>
-                            <span><t t-esc="doc.doctor_id.name or 'N/A'"/></span>
-                        </div>
-                    </div>
+          <!-- ====================== VISIT INFO ====================== -->
+          <div class="visit-info">
+            <div class="visit-number"><t t-esc="doc.name"/></div>
+            <div class="info-row">
+              <span>Served By:</span>
+              <span><t t-esc="env.user.name"/></span>
+            </div>
+            <div class="info-row">
+              <span>Doctor:</span>
+              <span><t t-esc="doc.doctor_id.name or 'N/A'"/></span>
+            </div>
+          </div>
 
-                    <div class="divider-dashed"></div>
+          <div class="divider-dashed"></div>
 
-                    <!-- ====================== ANIMAL / OWNER ====================== -->
-                    <div class="customer-info">
-                        <t t-if="doc.animal_id">
-                            <div class="info-row">
-                                <span class="label">Animal:</span>
-                                <span class="value"><t t-esc="doc.animal_id.name"/></span>
-                            </div>
-                            <t t-if="doc.animal_id.microchip_no">
-                                <div class="info-row">
-                                    <span class="label">ID:</span>
-                                    <span class="value"><t t-esc="doc.animal_id.microchip_no"/></span>
-                                </div>
-                            </t>
-                        </t>
-                        <t t-if="doc.owner_id">
-                            <div class="info-row">
-                                <span class="label">Owner:</span>
-                                <span class="value"><t t-esc="doc.owner_id.name"/></span>
-                            </div>
-                            <t t-if="doc.owner_id.contact_number">
-                                <div class="info-row">
-                                    <span class="label">Phone:</span>
-                                    <span class="value"><t t-esc="doc.owner_id.contact_number"/></span>
-                                </div>
-                            </t>
-                        </t>
-                    </div>
+          <!-- ====================== ANIMAL / OWNER ====================== -->
+          <div class="customer-info">
+            <t t-if="doc.animal_id">
+              <div class="info-row">
+                <span class="label">Animal:</span>
+                <span class="value"><t t-esc="doc.animal_id.name"/></span>
+              </div>
+              <t t-if="doc.animal_id.microchip_no">
+                <div class="info-row">
+                  <span class="label">ID:</span>
+                  <span class="value"><t t-esc="doc.animal_id.microchip_no"/></span>
+                </div>
+              </t>
+            </t>
+            <t t-if="doc.owner_id">
+              <div class="info-row">
+                <span class="label">Owner:</span>
+                <span class="value"><t t-esc="doc.owner_id.name"/></span>
+              </div>
+              <t t-if="doc.owner_id.contact_number">
+                <div class="info-row">
+                  <span class="label">Phone:</span>
+                  <span class="value"><t t-esc="doc.owner_id.contact_number"/></span>
+                </div>
+              </t>
+            </t>
+          </div>
 
-                    <div class="divider-dashed"></div>
+          <div class="divider-dashed"></div>
 
-                    <!-- ====================== ITEMS TABLE ====================== -->
-                    <div class="items-section">
-                        <t t-foreach="doc.receipt_lines" t-as="line">
-                            <div class="item-row">
-                                <div class="item-header">
-                                    <div class="item-name">
-                                        <t t-esc="line.service_id.name or line.product_id.display_name"/>
-                                    </div>
-                                    <div class="item-price">
-                                        <t t-esc="'{:,.2f}'.format(line.subtotal)"/> Rs.
-                                    </div>
-                                </div>
-                                <div class="item-details">
-                                    <span class="qty-price">
-                                        <t t-esc="'{:,.2f}'.format(line.quantity)"/> x <t t-esc="'{:,.2f}'.format(line.price_unit)"/> Rs. / Units
-                                    </span>
-                                </div>
-                                <t t-if="line.line_discount > 0">
-                                    <div class="item-details discount-line">
-                                        <t t-esc="'{:,.2f}'.format(line.original_price * line.quantity)"/> Rs. With a <t t-esc="'{:,.2f}'.format(line.original_price * line.line_discount / 100 * line.quantity)"/> Rs. discount
-                                    </div>
-                                </t>
-                            </div>
-                        </t>
+          <!-- ====================== ITEMS TABLE ====================== -->
+          <div class="items-section">
+            <t t-foreach="doc.receipt_lines" t-as="line">
+              <div class="item-row">
+                <div class="item-header">
+                  <div class="item-name">
+                    <t t-esc="line.service_id.name or line.product_id.display_name"/>
+                  </div>
+                  <div class="item-price">
+                    <t t-esc="'{:,.2f}'.format(line.subtotal)"/> Rs.
+                  </div>
+                </div>
+                <div class="item-details">
+                  <span class="qty-price">
+                    <t t-esc="'{:,.2f}'.format(line.quantity)"/> x <t t-esc="'{:,.2f}'.format(line.price_unit)"/> Rs. / Units
+                  </span>
+                </div>
+                <t t-if="line.line_discount > 0">
+                  <div class="item-details discount-line">
+                    <t t-esc="'{:,.2f}'.format(line.original_price * line.quantity)"/> Rs. With a <t t-esc="'{:,.2f}'.format(line.original_price * line.line_discount / 100 * line.quantity)"/> Rs. discount
+                  </div>
+                </t>
+              </div>
+            </t>
 
-                        <!-- Treatment Charge -->
-                        <t t-if="doc.treatment_charge > 0">
-                            <div class="item-row">
-                                <div class="item-header">
-                                    <div class="item-name">Treatment Charge</div>
-                                    <div class="item-price">
-                                        <t t-esc="'{:,.2f}'.format(doc.treatment_charge)"/> Rs.
-                                    </div>
-                                </div>
-                                <div class="item-details">
-                                    <span class="qty-price">1.00 x <t t-esc="'{:,.2f}'.format(doc.treatment_charge)"/> Rs. / Units</span>
-                                </div>
-                            </div>
-                        </t>
-                    </div>
+            <!-- Treatment Charge -->
+            <t t-if="doc.treatment_charge > 0">
+              <div class="item-row">
+                <div class="item-header">
+                  <div class="item-name">Treatment Charge</div>
+                  <div class="item-price">
+                    <t t-esc="'{:,.2f}'.format(doc.treatment_charge)"/> Rs.
+                  </div>
+                </div>
+                <div class="item-details">
+                  <span class="qty-price">1.00 x <t t-esc="'{:,.2f}'.format(doc.treatment_charge)"/> Rs. / Units</span>
+                </div>
+              </div>
+            </t>
+          </div>
 
-                    <div class="divider-dashed"></div>
+          <div class="divider-dashed"></div>
 
-                    <!-- ====================== TOTALS ====================== -->
-                    <div class="totals-section">
-                        <div class="total-row">
-                            <span>Items Subtotal:</span>
-                            <span><t t-esc="'{:,.2f}'.format(doc.subtotal)"/></span>
-                        </div>
-                        
-                        <t t-if="doc.treatment_charge > 0">
-                            <div class="total-row">
-                                <span>Treatment Charges:</span>
-                                <span><t t-esc="'{:,.2f}'.format(doc.treatment_charge)"/></span>
-                            </div>
-                        </t>
-
-                        <t t-if="doc.discount_percent > 0">
-                            <div class="total-row discount">
-                                <span>Overall Discount:</span>
-                                <span>-<t t-esc="'{:,.2f}'.format((doc.subtotal + doc.treatment_charge) * doc.discount_percent / 100)"/></span>
-                            </div>
-                        </t>
-
-                        <t t-if="doc.discount_fixed > 0">
-                            <div class="total-row discount">
-                                <span>Fixed Discount:</span>
-                                <span>-<t t-esc="'{:,.2f}'.format(doc.discount_fixed)"/></span>
-                            </div>
-                        </t>
-                        
-                        <div class="divider-dashed"></div>
-
-                        <div class="total-row grand">
-                            <span>TOTAL:</span>
-                            <span><t t-esc="'{:,.2f}'.format(doc.total_amount)"/></span>
-                        </div>
-
-                        <t t-if="doc.amount_received > 0">
-                            <div class="total-row received">
-                                <span>Amount Received:</span>
-                                <span><t t-esc="'{:,.2f}'.format(doc.amount_received)"/></span>
-                            </div>
-                        </t>
-
-                        <t t-set="balance" t-value="doc.total_amount - doc.amount_received"/>
-                        <t t-if="balance > 0.01">
-                            <div class="total-row balance">
-                                <span>Balance Due:</span>
-                                <span><t t-esc="'{:,.2f}'.format(balance)"/></span>
-                            </div>
-                        </t>
-                        <t t-if="doc.owner_unpaid_balance > 0">
-                            <div class="total-row balance">
-                                <span>Total Unpaid Balance:</span>
-                                <span><t t-esc="'%.2f' % doc.owner_unpaid_balance"/></span>
-                            </div>
-                        </t>
-                    </div>
-
-                    <div class="divider-dashed"></div>
-
-                    <!-- ====================== FOOTER ====================== -->
-                    <div class="thanks">Thank You for Visiting!</div>
-                    <div class="footer-info">
-                        <div>Powered by ERManager Consulting Services</div>
-                        <div class="datetime">
-                            <span id="local-datetime-footer">Loading...</span>
-                        </div>
-                    </div>
-
+          <!-- ====================== TOTALS ====================== -->
+          <div class="totals-section">
+            <div class="total-row">
+                <span>Items Subtotal:</span>
+                <span><t t-esc="'{:,.2f}'.format(doc.subtotal)"/></span>
+            </div>
+            
+            <t t-if="doc.treatment_charge > 0">
+                <div class="total-row">
+                    <span>Treatment Charges:</span>
+                    <span><t t-esc="'{:,.2f}'.format(doc.treatment_charge)"/></span>
                 </div>
             </t>
-        </t>
 
-        <!-- ====================== CSS ====================== -->
-        <style type="text/css" media="screen,print">
-            @page { 
-                size: 80mm auto; 
-                margin: 0; 
-            }
+            <t t-if="doc.discount_percent > 0">
+                <div class="total-row discount">
+                    <span>Overall Discount:</span>
+                    <span>-<t t-esc="'{:,.2f}'.format((doc.subtotal + doc.treatment_charge) * doc.discount_percent / 100)"/></span>
+                </div>
+            </t>
+
+            <t t-if="doc.discount_fixed > 0">
+                <div class="total-row discount">
+                    <span>Fixed Discount:</span>
+                    <span>-<t t-esc="'{:,.2f}'.format(doc.discount_fixed)"/></span>
+                </div>
+            </t>
             
-            body { 
-                margin: 0; 
-                padding: 0; 
-                font-family: Arial, Helvetica, sans-serif; 
-                font-size: 11px; 
-                line-height: 1.4; 
-                color: #000;
-            }
+            <div class="divider-dashed"></div>
+
+            <div class="total-row grand">
+                <span>INVOICE TOTAL:</span>
+                <span><t t-esc="'{:,.2f}'.format(doc.total_amount)"/></span>
+            </div>
+
+            <div class="divider-thin"></div>
+
+            <!-- Calculate correct balance from invoice residual -->
+            <t t-set="visit_invoices" t-value="doc.invoice_ids.filtered(lambda inv: inv.state == 'posted')"/>
+            <t t-set="total_residual" t-value="sum(visit_invoices.mapped('amount_residual'))"/>
             
-            .receipt { 
-                width: 80mm; 
-                padding: 3mm 4mm; 
-                box-sizing: border-box;
-            }
-
-            /* Header */
-            .logo { 
-                display: block; 
-                margin: 0 auto 3mm; 
-                max-width: 35mm; 
-                height: auto; 
-            }
+            <!-- Today's payment amount (what was just paid) -->
+            <t t-set="latest_payment" t-value="doc.latest_payment_amount or 0.0"/>
             
-            .clinic-name { 
-                text-align: center; 
-                font-weight: bold; 
-                font-size: 14px; 
-                margin-bottom: 1mm;
-            }
+            <!-- Show today's payment if any -->
+            <t t-if="latest_payment > 0.01">
+                <div class="total-row current-payment">
+                    <span>Amount Received:</span>
+                    <span><t t-esc="'{:,.2f}'.format(latest_payment)"/></span>
+                </div>
+                <div class="divider-thin"></div>
+            </t>
+
+            <!-- BALANCE CALCULATION - Use invoice residual directly -->
+            <t t-if="total_residual > 0.01">
+                <div class="total-row balance">
+                    <span>BALANCE DUE:</span>
+                    <span><t t-esc="'{:,.2f}'.format(total_residual)"/></span>
+                </div>
+            </t>
+            <t t-else="">
+                <div class="total-row fully-paid">
+                    <span>✓ FULLY PAID</span>
+                </div>
+            </t>
+
+            <!-- OTHER UNPAID INVOICES (from owner, excluding this visit) -->
+            <t t-set="owner_total_balance" t-value="doc.owner_unpaid_balance or 0.0"/>
+            <t t-set="other_invoices_balance" t-value="owner_total_balance - total_residual"/>
             
-            .clinic-email,
-            .clinic-contact { 
-                text-align: center; 
-                font-size: 10px;
-                line-height: 1.3;
-            }
+            <t t-if="other_invoices_balance > 0.01">
+                <div class="divider-thin"></div>
+                <div class="total-row other-invoices">
+                    <span>Other Unpaid Invoices:</span>
+                    <span><t t-esc="'{:,.2f}'.format(other_invoices_balance)"/></span>
+                </div>
+            </t>
+          </div>
 
-            .divider { 
-                text-align: center; 
-                margin: 2mm 0; 
-                font-weight: bold;
-                font-size: 10px;
-            }
+          <div class="divider-dashed"></div>
 
-            .divider-thin {
-                text-align: center;
-                margin: 1mm 0;
-                font-size: 10px;
-            }
+          <!-- ====================== FOOTER ====================== -->
+          <div class="thanks">Thank You for Visiting!</div>
+          <div class="footer-info">
+            <div>Powered by ERManager Consulting Services</div>
+            <div class="datetime">
+              <span id="local-datetime-footer">Loading...</span>
+            </div>
+          </div>
 
-            .divider-dashed {
-                border-top: 1px dashed #000;
-                margin: 3mm 0;
-            }
+        </div>
+      </t>
+    </t>
 
-            /* Visit Info */
-            .visit-info {
-                margin: 2mm 0;
-            }
+    <!-- ====================== CSS ====================== -->
+    <style type="text/css" media="screen,print">
+      @page { 
+        size: 80mm auto; 
+        margin: 0; 
+      }
 
-            .visit-number { 
-                text-align: center; 
-                font-size: 16px; 
-                font-weight: bold; 
-                margin: 2mm 0;
-                letter-spacing: 1px;
-            }
+      body { 
+        margin: 0; 
+        padding: 0; 
+        font-family: Arial, Helvetica, sans-serif; 
+        font-size: 12px; 
+        line-height: 1.4; 
+        color: #000;
+      }
 
-            .info-row {
-                display: flex;
-                justify-content: space-between;
-                margin: 1mm 0;
-                font-size: 11px;
-            }
+      .receipt { 
+        width: 80mm; 
+        padding: 3mm 4mm; 
+        box-sizing: border-box;
+      }
 
-            .info-row .label {
-                font-weight: bold;
-            }
+      /* Header */
+      .logo { 
+        display: block; 
+        margin: 0 auto 3mm; 
+        max-width: 50mm; 
+        height: auto; 
+      }
 
-            /* Customer Info */
-            .customer-info {
-                margin: 2mm 0;
-            }
+      .clinic-name { 
+        text-align: center; 
+        font-weight: bold; 
+        font-size: 15px; 
+        margin-bottom: 1mm;
+      }
 
-            .customer-info .value {
-                font-weight: bold;
-            }
+      .clinic-email,
+      .clinic-contact { 
+        text-align: center; 
+        font-size: 12px;
+        line-height: 1.3;
+      }
 
-            /* Items */
-            .items-section {
-                margin: 2mm 0;
-            }
+      .divider { 
+        text-align: center; 
+        margin: 2mm 0; 
+        font-weight: bold;
+        font-size: 12px;
+      }
 
-            .item-row {
-                margin: 3mm 0;
-            }
+      .divider-thin {
+        text-align: center;
+        margin: 1mm 0;
+        font-size: 12px;
+      }
 
-            .item-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-start;
-                font-weight: bold;
-                font-size: 12px;
-                margin-bottom: 1mm;
-            }
+      .divider-dashed {
+        border-top: 1px dashed #000;
+        margin: 3mm 0;
+      }
 
-            .item-name {
-                flex: 1;
-                padding-right: 3mm;
-                line-height: 1.3;
-            }
+      /* Visit Info */
+      .visit-info {
+        margin: 2mm 0;
+      }
 
-            .item-price {
-                white-space: nowrap;
-                font-weight: bold;
-            }
+      .visit-number { 
+        text-align: center; 
+        font-size: 18px; 
+        font-weight: bold; 
+        margin: 2mm 0;
+        letter-spacing: 1px;
+      }
 
-            .item-details {
-                font-size: 10px;
-                color: #333;
-                margin: 0.5mm 0;
-                line-height: 1.4;
-            }
+      .info-row {
+        display: flex;
+        justify-content: space-between;
+        margin: 1mm 0;
+        font-size: 14px;
+      }
 
-            .qty-price {
-                font-weight: normal;
-            }
+      .info-row .label {
+        font-weight: bold;
+      }
 
-            .discount-line {
-                color: #666;
-            }
+      /* Customer Info */
+      .customer-info {
+        margin: 2mm 0;
+      }
 
-            /* Totals */
-            .totals-section {
-                margin: 3mm 0;
-            }
+      .customer-info .value {
+        font-weight: bold;
+      }
 
-            .total-row {
-                display: flex;
-                justify-content: space-between;
-                margin: 1.5mm 0;
-                font-size: 11px;
-            }
+      /* Items */
+      .items-section {
+        margin: 2mm 0;
+      }
 
-            .total-row.discount {
-                color: #d32f2f;
-            }
+      .item-row {
+        margin: 3mm 0;
+      }
 
-            .total-row.grand {
-                font-size: 14px;
-                font-weight: bold;
-                margin: 2mm 0;
-                padding: 2mm 0;
-            }
+      .item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        font-weight: bold;
+        font-size: 14px;
+        margin-bottom: 1mm;
+      }
 
-            .total-row.received {
-                color: #2e7d32;
-                font-weight: bold;
-            }
+      .item-name {
+        flex: 1;
+        padding-right: 3mm;
+        line-height: 1.3;
+      }
 
-            .total-row.balance {
-                color: #d32f2f;
-                font-weight: bold;
-                font-size: 12px;
-            }
+      .item-price {
+        white-space: nowrap;
+        font-weight: bold;
+      }
 
-            /* Footer */
-            .thanks { 
-                text-align: center; 
-                font-weight: bold; 
-                font-size: 13px;
-                margin: 3mm 0 2mm; 
-            }
-            
-            .footer-info { 
-                text-align: center; 
-                font-size: 9px;
-                margin-top: 3mm;
-                line-height: 1.4;
-            }
+      .item-details {
+        font-size: 14px;
+        color: #333;
+        margin: 0.5mm 0;
+        line-height: 1.4;
+      }
 
-            .datetime {
-                margin-top: 1mm;
-                font-weight: bold;
-            }
+      .qty-price {
+        font-weight: normal;
+      }
 
-            /* Print adjustments */
-            @media print {
-                .receipt {
-                    page-break-after: always;
-                }
-            }
-        </style>
+      .discount-line {
+        color: #666;
+      }
 
-        <!-- ====================== JS ====================== -->
-        <script>
+      /* Totals */
+      .totals-section {
+        margin: 3mm 0;
+      }
+
+      .total-row {
+        display: flex;
+        justify-content: space-between;
+        margin: 1.5mm 0;
+        font-size: 14px;
+      }
+
+      .total-row.discount {
+        color: #d32f2f;
+      }
+
+      .total-row.grand {
+        font-size: 14px;
+        font-weight: bold;
+        margin: 2mm 0;
+        padding: 2mm 0;
+      }
+
+      .total-row.received {
+        color: #2e7d32;
+        font-weight: bold;
+      }
+
+      .total-row.balance {
+        color: #d32f2f;
+        font-weight: bold;
+        font-size: 14px;
+      }
+
+      /* Footer */
+      .thanks { 
+        text-align: center; 
+        font-weight: bold; 
+        font-size: 16px;
+        margin: 3mm 0 2mm; 
+      }
+
+      .footer-info { 
+        text-align: center; 
+        font-size: 12px;
+        margin-top: 3mm;
+        line-height: 1.4;
+      }
+
+      .datetime {
+        margin-top: 1mm;
+        font-weight: bold;
+      }
+
+      /* Print adjustments */
+      @media print {
+        .receipt {
+          page-break-after: always;
+        }
+
+        .total-row.balance {
+          color: #000000;
+        }
+
+        .total-row.discount {
+          color: #000000;
+        }
+
+        .total-row.received {
+          color: #000000;
+        }
+      }
+
+      /* Payment History Styles */
+      .previous-payment {
+          color: #1976d2;
+          font-size: 14px;
+      }
+      
+      .current-payment {
+          color: #2e7d32;
+          font-weight: bold;
+          font-size: 15px;
+          background-color: #e8f5e9;
+          padding: 1.5mm 2mm;
+          margin: 1mm -2mm;
+          border-radius: 2mm;
+      }
+      
+      .total-received {
+          font-weight: bold;
+          font-size: 14px;
+          color: #2e7d32;
+      }
+      
+      .fully-paid {
+          font-weight: bold;
+          font-size: 16px;
+          color: #2e7d32;
+          background-color: #e8f5e9;
+          padding: 2mm;
+          margin: 2mm -2mm;
+          border-radius: 2mm;
+          text-align: center;
+      }
+      
+      .other-invoices {
+          color: #f57c00;
+          font-size: 13px;
+          font-style: italic;
+      }
+      
+      .overpayment {
+          color: #1976d2;
+          font-weight: bold;
+      }
+
+      @media print {
+          .current-payment,
+          .fully-paid {
+              background-color: #f5f5f5 !important;
+              color: #000000 !important;
+          }
+          
+          .previous-payment,
+          .total-received,
+          .other-invoices,
+          .overpayment {
+              color: #000000 !important;
+          }
+      }
+    </style>
+
+    <!-- ====================== JS ====================== -->
+    <script>
         //<![CDATA[
-            document.addEventListener('DOMContentLoaded', () => {
-                const now = new Date();
-                const formatted = `${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')}/${now.getFullYear()} ${String(now.getHours()%12||12).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} ${now.getHours()>=12?'PM':'AM'}`;
-                const el = document.getElementById('local-datetime-footer');
-                if (el) el.textContent = formatted;
-                setTimeout(() => window.print(), 300);
-            });
+        document.addEventListener('DOMContentLoaded', () => {
+        const now = new Date();
+        const formatted = `${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')}/${now.getFullYear()} ${String(now.getHours()%12||12).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} ${now.getHours()>=12?'PM':'AM'}`;
+        const el = document.getElementById('local-datetime-footer');
+        if (el) el.textContent = formatted;
+        setTimeout(() => window.print(), 300);
+        });
 
-            const close = () => window.close() || (window.location.href = 'about:blank');
-            window.addEventListener('afterprint', close);
+        const close = () => window.close() || (window.location.href = 'about:blank');
+        window.addEventListener('afterprint', close);
 
-            let open = false;
-            window.addEventListener('blur', () => open = true);
-            window.addEventListener('focus', () => open && close());
+        let open = false;
+        window.addEventListener('blur', () => open = true);
+        window.addEventListener('focus', () => open && close());
         //]]>
-        </script>
-    </template>
+    </script>
+  </template>
 </odoo>

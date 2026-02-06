@@ -3,9 +3,9 @@
     
     <!-- Dashboard should be a child of menu_vet, not a root item -->
     <menuitem id="menu_vet_dashboard"
-              name="Dashboard" 
-              parent="menu_vet" 
-              action="action_vet_dashboard" 
+              name="Dashboard"
+              parent="menu_vet"
+              action="action_vet_dashboard"
               sequence="1"
               groups="vet_test.group_vet_limited_user,vet_test.group_vet_manager"/>
 
@@ -56,5 +56,19 @@
               parent="menu_vet" 
               action="action_vet_animal_history_wizard" 
               sequence="70"
+              groups="vet_test.group_vet_limited_user,vet_test.group_vet_manager"/>
+
+     <!-- Add Reports submenu to Vet Management -->
+    <menuitem id="menu_vet_reports" 
+              name="Reports" 
+              parent="menu_vet" 
+              sequence="65"
+              groups="vet_test.group_vet_limited_user,vet_test.group_vet_manager"/>
+    
+    <menuitem id="menu_vet_daily_sales_report"
+              name="Daily Sales Report"
+              parent="menu_vet_reports"
+              action="action_vet_daily_sales_report_wizard"
+              sequence="10"
               groups="vet_test.group_vet_limited_user,vet_test.group_vet_manager"/>
 </odoo>

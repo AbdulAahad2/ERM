@@ -10,6 +10,7 @@
             </p>
         </field>
     </record>
+
     <!-- List View -->
     <record id="view_vet_service_list" model="ir.ui.view">
         <field name="name">vet.service.list</field>
@@ -23,6 +24,7 @@
             </list>
         </field>
     </record>
+
     <!-- Form View -->
     <record id="view_vet_service_form" model="ir.ui.view">
         <field name="name">vet.service.form</field>
@@ -43,6 +45,7 @@
                             <field name="description"/>
                         </group>
                     </group>
+
                     <!-- Combo Choices Section for Tests -->
                     <notebook>
                         <page string="Combo Choices" 
@@ -65,9 +68,11 @@
                                     <li>Save the test to link all combo choices to the product</li>
                                 </ol>
                             </div>
+                            
                             <div class="alert alert-warning" role="alert" invisible="combo_choice_ids">
                                 <strong>Important:</strong> Add at least one combo choice before saving. Tests require combo choices to be defined.
                             </div>
+                            
                             <field name="combo_choice_ids" 
                                    nolabel="1"
                                    widget="many2many_tags"/>
@@ -77,4 +82,5 @@
             </form>
         </field>
     </record>
+
 </odoo>

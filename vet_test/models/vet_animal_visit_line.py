@@ -1,9 +1,13 @@
 import logging
+
 from odoo import api, fields, models
+
 _logger = logging.getLogger(__name__)
+
 class VetAnimalVisitLine(models.Model):
     _name = "vet.animal.visit.line"
     _description = "Animal Visit Line"
+
     # ------------------------------------------------------------------
     #  Existing fields (keep them)
     # ------------------------------------------------------------------
@@ -16,6 +20,7 @@ class VetAnimalVisitLine(models.Model):
     discount = fields.Float("Old Discount % (ignored)", default=0.0)
     visit_id = fields.Many2one('vet.animal.visit', string="Visit")
     quantity = fields.Float('Quantity', default=1.0)
+
     # ------------------------------------------------------------------
     #  LINE-LEVEL DISCOUNT (the only thing that changes the line)
     # ------------------------------------------------------------------
@@ -25,6 +30,7 @@ class VetAnimalVisitLine(models.Model):
         default=0.0,
         help="Discount that only applies to this line."
     )
+
     # ------------------------------------------------------------------
     #  ADD THIS NEW FIELD HERE ✅
     # ------------------------------------------------------------------
@@ -35,6 +41,7 @@ class VetAnimalVisitLine(models.Model):
         digits='Product Price',
         help="Original list price before line discount"
     )
+
     # ------------------------------------------------------------------
     #  PRICE = list_price * (1 - line_discount/100)
     # ------------------------------------------------------------------
@@ -45,6 +52,7 @@ class VetAnimalVisitLine(models.Model):
         readonly=False,
         digits='Product Price'
     )
+
     # ------------------------------------------------------------------
     #  SUBTOTAL = quantity * price_unit
     # ------------------------------------------------------------------
@@ -54,11 +62,13 @@ class VetAnimalVisitLine(models.Model):
         store=True,
         digits='Product Price'
     )
+
     # ------------------------------------------------------------------
     #  Keep the rest of the original fields (invoiced, delivered …)
     # ------------------------------------------------------------------
     invoiced = fields.Boolean(default=False, string="Invoiced")
     delivered = fields.Boolean(default=False, string="Delivered")
+
     # ------------------------------------------------------------------
     #  ADD THIS NEW COMPUTE METHOD HERE ✅
     # ------------------------------------------------------------------
@@ -69,6 +79,7 @@ class VetAnimalVisitLine(models.Model):
                 line.original_price = line.service_id.product_id.lst_price
             else:
                 line.original_price = 0.0
+
     # ------------------------------------------------------------------
     #  COMPUTED PRICE (list price → line discount)
     # ------------------------------------------------------------------
@@ -79,13 +90,15 @@ class VetAnimalVisitLine(models.Model):
             if not line.service_id or not line.service_id.product_id:
                 line.price_unit = 0.0
                 continue
+
             list_price = line.service_id.product_id.lst_price
             disc = line.line_discount or 0.0
             line.price_unit = list_price * (1 - disc / 100)
+
     # ------------------------------------------------------------------
     #  SUBTOTAL
     # ------------------------------------------------------------------
     @api.depends('quantity', 'price_unit')
     def _compute_subtotal(self):
-            for line in self:
-                    line.subtotal = line.quantity * line.price_unit
+        for line in self:
+            line.subtotal = line.quantity * line.price_unit

@@ -39,8 +39,8 @@ Manage the animals that visit our veterinarian
         'views/animal_history.xml',
         'views/service_views.xml',
         'views/menu_vet_views.xml',
+        'views/vet_daily_sales_report_views.xml',
         'views/vet_dashboard_views.xml',
-
     ],
     'assets': {
         'web.report_assets_common': [

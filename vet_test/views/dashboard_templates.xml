@@ -39,11 +39,11 @@
                             <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
                                 <div class="card bg-info text-white">
                                     <div class="card-body p-2">
-                                        <h6 class="card-title mb-1">Total Bank</h6>
+                                        <h6 class="card-title mb-1">Total Card</h6>
                                         <h4 class="card-text mb-0">
                                             <field name="dashboard_total_bank" widget="monetary" options="{'currency_field': 'currency_id'}"/>
                                         </h4>
-                                        <small class="card-text">Bank transfers</small>
+                                        <small class="card-text">Card Transfers</small>
                                     </div>
                                 </div>
                             </div>

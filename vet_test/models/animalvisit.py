@@ -1,4 +1,5 @@
 import logging
+import re
 import uuid
 
 from odoo import _, api, fields, models
@@ -88,18 +89,31 @@ class VetAnimalVisit(models.Model):
             default='draft'
             )
     delivered = fields.Boolean(default=False, string="Products Delivered")
-    amount_received = fields.Float(compute='_compute_amount_received')
+    amount_received = fields.Float(
+        compute='_compute_amount_received',
+        string="Amount Received"
+    )
+
     latest_payment_amount = fields.Float(
-            string="Latest Payment Amount",
-            default=0.0,
-            help="Amount of the most recent payment made for this visit."
-            )
+        string="Latest Payment Amount",
+        default=0.0,
+        help="Amount of the most recent payment made for this visit."
+    )
     owner_unpaid_balance = fields.Float(
             string="Unpaid Balance",
             compute="_compute_owner_unpaid_balance",
             store=False,
             digits=(16, 2),
             )
+
+    
+    currency_id = fields.Many2one(
+        'res.currency',
+        string='Currency',
+        default=lambda self: self.env.company.currency_id,
+        required=True
+    )
+    
  
     @api.onchange('company_id')
     def _onchange_company_id(self):
@@ -125,10 +139,26 @@ class VetAnimalVisit(models.Model):
                 }
             }
 
-    @api.depends('latest_payment_amount', 'invoice_ids', 'invoice_ids.state', 'invoice_ids.amount_residual')
+    @api.depends('invoice_ids', 'invoice_ids.state', 
+             'invoice_ids.amount_residual', 'invoice_ids.amount_total')
     def _compute_amount_received(self):
+        """Calculate total amount received across ALL invoices for this visit"""
         for visit in self:
-            visit.amount_received = visit.latest_payment_amount or 0.0
+            total_paid = 0.0
+            
+            # Sum up all payments made to this visit's invoices
+            for invoice in visit.invoice_ids.filtered(lambda inv: inv.state == 'posted'):
+                # amount_paid = amount_total - amount_residual
+                invoice_paid = invoice.amount_total - invoice.amount_residual
+                total_paid += invoice_paid
+                
+                _logger.info("Visit %s - Invoice %s: Total=%.2f, Residual=%.2f, Paid=%.2f",
+                            visit.name, invoice.name, invoice.amount_total, 
+                            invoice.amount_residual, invoice_paid)
+            
+            visit.amount_received = total_paid
+            _logger.info("Visit %s - Total amount received: %.2f (from invoices only)", 
+                        visit.name, total_paid)
 
     @api.depends('owner_id.partner_id')
     def _compute_has_unpaid_invoice(self):
@@ -265,11 +295,22 @@ class VetAnimalVisit(models.Model):
                 visit.with_context(skip_visit_validation=True).write({'state': 'confirmed'})
                 visit.message_post(body=_("Visit confirmed."))
 
+    # def action_cancel(self):
+    #     for visit in self:
+    #         if visit.state in ['draft', 'confirmed']:
+    #             if visit.invoice_ids.filtered(lambda inv: inv.state == 'posted'):
+    #                 raise UserError(_("Cannot cancel a visit with posted invoices. Please cancel the invoices first."))
+    #             visit.with_context(skip_visit_validation=True).write({'state': 'cancel'})
+    #             visit.message_post(body=_("Visit cancelled."))
+
     def action_cancel(self):
         for visit in self:
             if visit.state in ['draft', 'confirmed']:
-                if visit.invoice_ids.filtered(lambda inv: inv.state == 'posted'):
+                # Only check for POSTED invoices (not cancelled ones)
+                posted_invoices = visit.invoice_ids.filtered(lambda inv: inv.state == 'posted')
+                if posted_invoices:
                     raise UserError(_("Cannot cancel a visit with posted invoices. Please cancel the invoices first."))
+                
                 visit.with_context(skip_visit_validation=True).write({'state': 'cancel'})
                 visit.message_post(body=_("Visit cancelled."))
 
@@ -452,7 +493,7 @@ class VetAnimalVisit(models.Model):
 
     @api.onchange('contact_number')
     def _onchange_contact_number(self):
-        """Enhanced to preserve context for new animal creation"""
+        """Enhanced to search by last N digits (5+) - handles international formats"""
         if not self.contact_number:
             return {
                 'domain': {
@@ -461,13 +502,72 @@ class VetAnimalVisit(models.Model):
                 }
             }
         
-        owner = self.env['vet.animal.owner'].search(
-            [('contact_number', '=', self.contact_number.strip())], 
-            limit=1
-        )
+        search_term = self.contact_number.strip()
         
-        if owner:
+        # Extract only digits from the search term
+        digits_only = re.sub(r'\D', '', search_term)
+        
+        # For Pakistan numbers, normalize BOTH search term and stored numbers
+        # Strategy: Always compare using the 03XX XXXXX format (11 digits starting with 0)
+        if digits_only.startswith('92') and len(digits_only) >= 11:
+            # Convert +92 3XX XXXXX (923XXXXXXXXX) to 03XX XXXXX (03XXXXXXXXX)
+            normalized_search = '0' + digits_only[2:]
+        elif digits_only.startswith('0') and len(digits_only) >= 11:
+            # Already in 03XX XXXXX format
+            normalized_search = digits_only
+        else:
+            # For other formats or shorter numbers, use as-is
+            normalized_search = digits_only
+        
+        _logger.info("Contact search: input='%s', digits='%s', normalized='%s'", 
+                    search_term, digits_only, normalized_search)
+        
+        # Search by last N digits (minimum 5)
+        if len(normalized_search) >= 5:
+            # Get all owners and filter in Python (more reliable than SQL regex)
+            all_owners = self.env['vet.animal.owner'].search([
+                ('contact_number', '!=', False)
+            ])
+            
+            # Filter contacts by matching ending digits after normalization
+            matching_owners = self.env['vet.animal.owner']
+            
+            for owner in all_owners:
+                if not owner.contact_number:
+                    continue
+                
+                # Normalize stored contact number
+                stored_digits = re.sub(r'\D', '', owner.contact_number)
+                
+                # Apply same normalization rules
+                if stored_digits.startswith('92') and len(stored_digits) >= 11:
+                    normalized_stored = '0' + stored_digits[2:]
+                elif stored_digits.startswith('0') and len(stored_digits) >= 11:
+                    normalized_stored = stored_digits
+                else:
+                    normalized_stored = stored_digits
+                
+                # Check if normalized stored number ENDS with our search digits
+                if normalized_stored.endswith(normalized_search):
+                    matching_owners |= owner
+                    _logger.info("  Match: owner='%s', stored='%s' -> normalized='%s' ends with '%s'", 
+                               owner.name, owner.contact_number, normalized_stored, normalized_search)
+            
+            owners = matching_owners
+            
+            _logger.info("Contact search: '%s' -> found %d owners", search_term, len(owners))
+        else:
+            # For shorter queries (less than 5 digits), use regular ilike search
+            owners = self.env['vet.animal.owner'].search([
+                ('contact_number', 'ilike', search_term)
+            ])
+        
+        if len(owners) == 1:
+            # Auto-select if only one match
+            owner = owners[0]
             self.owner_id = owner
+            self.contact_number = owner.contact_number  # Update to full number
+            
             animals = self.env['vet.animal'].search([('owner_id', '=', owner.id)])
             
             if len(animals) == 1:
@@ -485,17 +585,64 @@ class VetAnimalVisit(models.Model):
                 'animal_id': [('owner_id', '=', owner.id)],
                 'selected_animal_id': [('owner_id', '=', owner.id)]
             }
-        else:
+            
+            # return {
+            #     'domain': domain,
+            #     'warning': {
+            #         'title': _('Owner Found'),
+            #         'message': _('Found owner: %s\nFull contact: %s') % (owner.name, owner.contact_number)
+            #     }
+            # }
+        elif len(owners) > 1:
+            # Multiple matches - show all
             self.selected_animal_id = False
             self.animal_id = False
             self.animal_name = False
-            domain = {
-                'animal_id': [('id', '!=', False)],
-                'selected_animal_id': [('id', '!=', False)]
+            
+            owner_list = '\n'.join([f"• {o.name} ({o.contact_number})" for o in owners[:10]])
+            if len(owners) > 10:
+                owner_list += f"\n... and {len(owners) - 10} more"
+            
+            return {
+                'domain': {
+                    'owner_id': [('id', 'in', owners.ids)],
+                    'animal_id': [('owner_id', 'in', owners.ids)],
+                    'selected_animal_id': [('owner_id', 'in', owners.ids)]
+                },
+                'warning': {
+                    'title': _('Multiple Owners Found'),
+                    'message': _('Found %d owners:\n\n%s\n\nPlease select the correct owner from the dropdown.') 
+                              % (len(owners), owner_list)
+                }
             }
-        
-        return {'domain': domain}
-
+        else:
+            # No match found
+            self.selected_animal_id = False
+            self.animal_id = False
+            self.animal_name = False
+            
+            if len(normalized_search) >= 5:
+                return {
+                    'domain': {
+                        'owner_id': [('id', '!=', False)],
+                        'animal_id': [('id', '!=', False)],
+                        'selected_animal_id': [('id', '!=', False)]
+                    },
+                    'warning': {
+                        'title': _('No Owner Found'),
+                        'message': _('No owner found with contact ending in "%s".\n\nSearched: %s\nTry entering the full contact number or search by owner name.') 
+                                  % (normalized_search, search_term)
+                    }
+                }
+            else:
+                domain = {
+                    'owner_id': [('id', '!=', False)],
+                    'animal_id': [('id', '!=', False)],
+                    'selected_animal_id': [('id', '!=', False)]
+                }
+            
+            return {'domain': domain}
+            
     @api.onchange('company_id')
     def _onchange_company_id(self):
         """Filter doctors when branch/company changes"""
@@ -1731,7 +1878,7 @@ class VetAnimalVisitPaymentWizard(models.Model):
                 lambda inv: inv.payment_state in ['not_paid', 'partial']
             ).sorted('id', reverse=True)[:1]
             
-            # ALWAYS default to current invoice amount for 'current' mode
+            # Set default amount to current invoice residual
             if current_invoice:
                 res['amount'] = current_invoice.amount_residual
                 _logger.info("Payment Wizard: Set default amount to current invoice: %.2f", 
@@ -1759,37 +1906,58 @@ class VetAnimalVisitPaymentWizard(models.Model):
 
     @api.onchange('payment_mode')
     def _onchange_payment_mode(self):
-        """Update amount based on payment mode - but ONLY when mode actually changes"""
-        # Don't process if we're in the middle of confirming payment
+        """Update amount suggestion based on payment mode"""
         if self.env.context.get('confirming_payment'):
             return
         
-        _logger.info("Payment Wizard: _onchange_payment_mode triggered. Mode=%s, Current Amount=%.2f", 
-                    self.payment_mode, self.amount)
+        _logger.info("Payment Wizard: _onchange_payment_mode triggered. Mode=%s", self.payment_mode)
         
+        # Just suggest amounts, but keep field editable
         if self.payment_mode == 'current':
             if self.current_invoice_id:
-                new_amount = self.current_invoice_amount
-                _logger.info("Payment Wizard: Setting amount to current invoice: %.2f", new_amount)
-                self.amount = new_amount
+                self.amount = self.current_invoice_amount
         elif self.payment_mode == 'all':
-            new_amount = self.owner_unpaid_balance
-            _logger.info("Payment Wizard: Setting amount to all unpaid: %.2f", new_amount)
-            self.amount = new_amount
+            self.amount = self.owner_unpaid_balance
         elif self.payment_mode == 'other':
             if self.other_invoice_ids:
-                new_amount = sum(self.other_invoice_ids.mapped('amount_residual'))
-                _logger.info("Payment Wizard: Setting amount to selected invoices: %.2f", new_amount)
-                self.amount = new_amount
-            else:
-                _logger.info("Payment Wizard: No other invoices selected, keeping current amount")
+                self.amount = sum(self.other_invoice_ids.mapped('amount_residual'))
 
     @api.onchange('other_invoice_ids')
     def _onchange_other_invoice_ids(self):
-        """Update amount when other invoices are selected"""
+        """Update suggested amount when other invoices are selected"""
         if self.payment_mode == 'other' and self.other_invoice_ids:
             self.amount = sum(self.other_invoice_ids.mapped('amount_residual'))
-            _logger.info("Payment Wizard: Updated amount from other_invoice_ids: %.2f", self.amount)
+
+    @api.constrains('amount', 'payment_mode', 'current_invoice_amount', 'owner_unpaid_balance')
+    def _check_payment_amount(self):
+        """Validate payment amount"""
+        for wizard in self:
+            if wizard.amount <= 0:
+                raise ValidationError(_("Payment amount must be greater than zero."))
+            
+            # Check max amount based on payment mode
+            if wizard.payment_mode == 'current':
+                max_amount = wizard.current_invoice_amount
+                if wizard.amount > max_amount:
+                    raise ValidationError(
+                        _("Payment amount (%.2f) cannot exceed current invoice balance (%.2f).") 
+                        % (wizard.amount, max_amount)
+                    )
+            elif wizard.payment_mode == 'other':
+                if wizard.other_invoice_ids:
+                    max_amount = sum(wizard.other_invoice_ids.mapped('amount_residual'))
+                    if wizard.amount > max_amount:
+                        raise ValidationError(
+                            _("Payment amount (%.2f) cannot exceed selected invoices balance (%.2f).") 
+                            % (wizard.amount, max_amount)
+                        )
+            elif wizard.payment_mode == 'all':
+                max_amount = wizard.owner_unpaid_balance
+                if wizard.amount > max_amount:
+                    raise ValidationError(
+                        _("Payment amount (%.2f) cannot exceed total unpaid balance (%.2f).") 
+                        % (wizard.amount, max_amount)
+                    )
 
     def action_confirm_payment(self):
         self.ensure_one()
@@ -1852,16 +2020,7 @@ class VetAnimalVisitPaymentWizard(models.Model):
         if not invoices:
             raise UserError(_("No invoices found to pay."))
 
-        # Validate amount against SELECTED invoices only
-        total_residual = sum(invoices.mapped('amount_residual'))
-        _logger.info("Total residual of selected invoices: %.2f", total_residual)
-        
-        if amount > total_residual:
-            raise UserError(
-                _("You are trying to pay %.2f but the selected invoices' total balance is only %.2f.") 
-                % (amount, total_residual)
-            )
-
+        # Update visit payment info
         visit.with_context(from_payment_wizard=True).write({
             'latest_payment_amount': amount,
             'journal_id': self.journal_id.id
@@ -1874,9 +2033,14 @@ class VetAnimalVisitPaymentWizard(models.Model):
             for invoice in invoices:
                 if remaining_amount <= 0:
                     break
+                
+                # Pay up to the invoice's residual or remaining amount (whichever is less)
                 payment_amount = min(remaining_amount, invoice.amount_residual)
                 if payment_amount <= 0:
                     continue
+
+                _logger.info("Processing payment of %.2f for invoice %s (residual: %.2f)", 
+                           payment_amount, invoice.name, invoice.amount_residual)
 
                 PaymentRegister = self.env['account.payment.register']
                 ctx = {
@@ -1893,7 +2057,9 @@ class VetAnimalVisitPaymentWizard(models.Model):
                     'skip_account_move_synchronization': True,
                 }
 
-                payment_wizard = PaymentRegister.with_context(ctx).create({})
+                payment_wizard = PaymentRegister.with_context(ctx).create({
+                    'amount': payment_amount,
+                })
                 payment_wizard.payment_difference_handling = 'open'
                 payment_result = payment_wizard.action_create_payments()
 
@@ -1902,7 +2068,9 @@ class VetAnimalVisitPaymentWizard(models.Model):
                     new_payment = self.env['account.payment'].browse(payment_result['res_id'])
                 payments |= new_payment
                 remaining_amount -= payment_amount
-                _logger.info("Payment of %.2f registered for invoice %s", payment_amount, invoice.name)
+                
+                _logger.info("Payment of %.2f registered for invoice %s. New payment state: %s", 
+                           payment_amount, invoice.name, invoice.payment_state)
 
         except Exception as e:
             _logger.warning("Standard payment register failed: %s. Using manual fallback.", str(e))
@@ -1952,6 +2120,7 @@ class VetAnimalVisitPaymentWizard(models.Model):
 
                 remaining_amount -= payment_amount
 
+        # Force recompute payment states
         invoices._compute_payment_state()
         invoices.invalidate_recordset(['payment_state', 'amount_residual'])
         visit.invalidate_recordset(['payment_state', 'is_fully_paid', 'amount_received'])
@@ -1974,8 +2143,9 @@ class VetAnimalVisitPaymentWizard(models.Model):
                 'type': 'ir.actions.client',
                 'tag': 'display_notification',
                 'params': {
-                    'title': _('Receipt Ready!'),
-                    'message': _('Payment processed! Receipt printed.'),
+                    'title': _('Payment Successful!'),
+                    'message': _('Payment of %.2f processed successfully!') % self.amount,
+                    'type': 'success',
                     'sticky': False,
                 }
             }

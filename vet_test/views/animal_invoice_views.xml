@@ -2,7 +2,7 @@
 <odoo>
     <data noupdate="0">
         <!-- ========================================================= -->
-        <!-- SEARCH VIEW WITH RANGE FILTER FIELDS                      -->
+        <!-- SEARCH VIEW WITH SMART RANGE FILTER FIELDS                -->
         <!-- ========================================================= -->
         <record id="view_vet_animal_visit_invoice_search" model="ir.ui.view">
             <field name="name">vet.animal.visit.invoice.search</field>
@@ -17,22 +17,28 @@
                     <field name="name" string="Invoice #" 
                            filter_domain="['|', ('name', 'ilike', self), ('ref', 'ilike', self)]"/>
                     
-                    <!-- Invoice Sequence Number Range Filters -->
+                    <!-- Smart Invoice Sequence Range Filters -->
                     <field name="invoice_seq_from" 
-                           string="Invoice # From"
-                           widget="integer"/>
+                           string="Invoice From"
+                           placeholder="e.g., 001 or 2025/00230"/>
                     <field name="invoice_seq_to" 
-                           string="Invoice # To"
-                           widget="integer"/>
+                           string="Invoice To"
+                           placeholder="e.g., 010 or 2026/00010"/>
+                    
+                    <!-- Direct Year Filter (optional) -->
+                    <field name="invoice_year" 
+                           string="Invoice Year"/>
                     
                     <!-- Filters -->
                     <filter string="Draft"      name="filter_draft"   domain="[('state','=','draft')]"/>
                     <filter string="Posted"     name="filter_posted"  domain="[('state','=','posted')]"/>
+                    <filter string="Cancelled"  name="filter_cancelled" domain="[('state','=','cancel')]"/>
+                    <separator/>
                     <filter string="Paid"       name="filter_paid"    domain="[('payment_state','=','paid')]"/> 
                     <filter string="Partial Paid"
                             name="filter_partial_paid"
                             domain="[('payment_state','=','partial')]"/>
-                    <filter name="unpaid_invoices" string="Unpaid" domain="[('payment_state','=','not_paid')]"/>
+                    <filter string="Unpaid" name="unpaid_invoices" domain="[('payment_state','=','not_paid')]"/>
                     
                     <!-- Payment Type Filters -->
                     <separator/>
@@ -43,8 +49,19 @@
                             name="filter_bank"
                             domain="[('payment_journal_type','=','bank')]"/>
                     
+                    <!-- Year Quick Filters -->
+                    <separator/>
+                    <filter string="2026" name="filter_2026"
+                            domain="[('invoice_year','=',2026)]"/>
+                    <filter string="2025" name="filter_2025"
+                            domain="[('invoice_year','=',2025)]"/>
+                    <filter string="2024" name="filter_2024"
+                            domain="[('invoice_year','=',2024)]"/>
+                    
                     <!-- Group By -->
                     <group expand="0" string="Group By">
+                        <filter string="Year" name="group_year"
+                                context="{'group_by': 'invoice_year'}"/>
                         <filter string="Company" name="group_company"
                                 context="{'group_by': 'company_id'}"/>
                         <filter string="Invoice Date"   name="group_invoice_date"
@@ -55,13 +72,15 @@
                                 context="{'group_by': 'payment_journal_type'}"/>
                         <filter string="Customer"       name="group_customer"
                                 context="{'group_by': 'partner_id'}"/>
+                        <filter string="State" name="group_state"
+                                context="{'group_by': 'state'}"/>
                     </group>  
                 </search>
             </field>
         </record>
 
         <!-- ========================================================= -->
-        <!-- LIST VIEW WITH ALWAYS-VISIBLE TOTALS                      -->
+        <!-- LIST VIEW WITH YEAR COLUMN                                -->
         <!-- ========================================================= -->
         <record id="view_vet_animal_visit_invoice_list" model="ir.ui.view">
             <field name="name">vet.animal.visit.invoice.list</field>
@@ -73,21 +92,27 @@
                       decoration-success="payment_state=='paid'"
                       decoration-warning="payment_state=='partial'"
                       decoration-danger="payment_state=='not_paid'"
-                      default_order="invoice_date desc">
+                      decoration-muted="state=='cancel'"
+                      default_order="invoice_year desc, invoice_sequence_number desc">
 
                     <field name="name" string="Invoice #"/>
+                    <field name="invoice_year" string="Year" optional="hide"/>
+                    <field name="invoice_sequence_number" string="Seq #" optional="hide"/>
                     <field name="company_id" string="Company" optional="show"/>
-                    <field name="invoice_date" string="Date"/>
+                    
+                    <!-- Date and Time Fields -->
+                    <field name="invoice_date" string="Invoice Date"/>
+                    <field name="create_date" string="Date &amp; Time" widget="datetime" options="{'format': 'DD/MM/YYYY hh:mm A'}"/>
+                    
                     <field name="payment_journal_id" string="Payment Journal" optional="show"/>
                     <field name="payment_journal_type" string="Pay Type" optional="show"/>
                     
-                    <!-- Total with sum always visible -->
                     <field name="amount_total" 
-                           string="Total"
-                           widget="monetary" 
-                           sum="Total Amount"/>
+                       string="Total"
+                       widget="monetary" 
+                       sum="Total Amount"
+                       decoration-muted="state=='cancel'"/>
 
-                    <!-- Owner Unpaid with sum -->
                     <field name="owner_unpaid_balance"
                            string="Owner Unpaid"
                            widget="monetary"
@@ -102,19 +127,17 @@
                            widget="many2one"
                            options="{'no_create': True}"/>
 
-                    <!-- Invoice Unpaid with sum -->
                     <field name="invoice_unpaid_balance"
                            string="Pending Balance"
                            widget="monetary"
                            sum="Total Invoice Unpaid"/>
                     
-                    <!-- Payment type totals with sum -->
                     <field name="dashboard_total_cash" 
                            string="Cash Payments"
                            widget="monetary"
                            sum="Total Cash"/>
                     <field name="dashboard_total_bank" 
-                           string="Bank Payments"
+                           string="Card"
                            widget="monetary"
                            sum="Total Bank"/>
                     <field name="dashboard_total_online" 
@@ -126,7 +149,7 @@
         </record>
 
         <!-- ========================================================= -->
-        <!-- ACTION                                                     -->
+        <!-- ACTION - INCLUDE CANCELLED INVOICES                       -->
         <!-- ========================================================= -->
         <record id="invoice_list_action" model="ir.actions.act_window">
             <field name="name">Invoices</field>
@@ -137,14 +160,20 @@
             <field name="domain">[('move_type', '=', 'out_invoice')]</field>
             <field name="context">{
                 'default_move_type': 'out_invoice',
+                'search_default_filter_posted': 1,
             }</field>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">
                     Create your first invoice!
                 </p>
                 <p>
-                    Use the "Invoice # From" and "Invoice # To" fields in the search bar to filter by invoice sequence number range.
+                    <b>Smart Invoice Filtering:</b>
                 </p>
+                <ul>
+                    <li>Simple format: Enter "001" or "10" to filter current year (2026)</li>
+                    <li>Year/Sequence format: Enter "2025/00230" and "2026/00010" to filter across years</li>
+                    <li>Example: From "2025/00230" To "2026/00010" shows invoices from #230 of 2025 through #10 of 2026</li>
+                </ul>
             </field>
         </record>
 
@@ -167,7 +196,7 @@
             <field name="res_model">account.move</field>
             <field name="view_mode">graph</field>
             <field name="view_id" ref="view_vet_animal_visit_invoice_graph"/>
-            <field name="domain">[('move_type', '=', 'out_invoice')]</field>
+            <field name="domain">[('move_type', '=', 'out_invoice'), ('state', '!=', 'cancel')]</field>
             <field name="context">{
                 'graph_measure': 'amount_total',
                 'graph_mode': 'bar',

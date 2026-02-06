@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <!-- ===================== WIZARD FORM VIEW ===================== -->
+        <record id="view_vet_daily_sales_report_wizard_form" model="ir.ui.view">
+            <field name="name">vet.daily.sales.report.wizard.form</field>
+            <field name="model">vet.daily.sales.report.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Daily Sales Report">
+                    <sheet>
+                        <group>
+                            <group string="Branch &amp; Date Range">
+                                <field name="company_id"
+                                       options="{'no_create': True, 'no_open': True}"
+                                       required="1"/>
+                                <field name="invoice_seq_from"
+                                       placeholder="e.g., 001 or 2025/00230"/>
+                                <field name="invoice_seq_to"
+                                       placeholder="e.g., 010 or 2026/00010"/>
+                            </group>
+                        </group>
+
+                        <div class="alert alert-info" role="alert">
+                            <h4><i class="fa fa-info-circle"/> Report Information</h4>
+                            <ul>
+                                <li><strong>Date Range:</strong> Filter invoices by invoice date</li>
+                                <li><strong>Invoice Range:</strong> Optional - further filter by invoice numbers</li>
+                                <li><strong>Detailed Report:</strong> Shows all services with individual line items</li>
+                                <li><strong>Summary Report:</strong> Shows grouped totals by service type</li>
+                            </ul>
+                        </div>
+                    </sheet>
+
+                    <footer>
+                        <button string="Generate Report"
+                                name="action_generate_report"
+                                type="object"
+                                class="btn-primary"/>
+                        <button string="Cancel"
+                                special="cancel"
+                                class="btn-secondary"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- ===================== WIZARD ACTION ===================== -->
+        <record id="action_vet_daily_sales_report_wizard" model="ir.actions.act_window">
+            <field name="name">Daily Sales Report</field>
+            <field name="res_model">vet.daily.sales.report.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="view_vet_daily_sales_report_wizard_form"/>
+            <field name="target">new</field>
+        </record>
+
+        <!-- ===================== PAPER FORMAT ===================== -->
+        <record id="paperformat_daily_sales" model="report.paperformat">
+            <field name="name">Daily Sales Report Format</field>
+            <field name="default" eval="False"/>
+            <field name="format">A4</field>
+            <field name="page_height">0</field>
+            <field name="page_width">0</field>
+            <field name="orientation">Portrait</field>
+            <field name="margin_top">20</field>
+            <field name="margin_bottom">20</field>
+            <field name="margin_left">10</field>
+            <field name="margin_right">10</field>
+            <field name="header_line" eval="False"/>
+            <field name="header_spacing">15</field>
+            <field name="dpi">90</field>
+        </record>
+
+        <!-- ===================== REPORT DEFINITION ===================== -->
+        <record id="action_report_daily_sales" model="ir.actions.report">
+            <field name="name">Daily Sales Report</field>
+            <field name="model">vet.daily.sales.report.wizard</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">vet_test.report_daily_sales_document</field>
+            <field name="report_file">vet_test.report_daily_sales_document</field>
+            <field name="binding_model_id" ref="model_vet_daily_sales_report_wizard"/>
+            <field name="binding_type">report</field>
+            <field name="paperformat_id" ref="paperformat_daily_sales"/>
+        </record>
+
+        <!-- ===================== REPORT TEMPLATE ===================== -->
+        <template id="report_daily_sales_document">
+            <t t-call="web.basic_layout">
+                <div class="page" style="font-size: 11px;">
+                    <!-- Header with Branch and Date -->
+                    <div style="text-align: center; margin-bottom: 15px;">
+                        <h3 style="margin: 5px 0;"><span t-field="company.name"/></h3>
+                        <h4 style="margin: 5px 0;">Daily Sales Report</h4>
+                        <p style="margin: 3px 0;">
+                            <t t-if="data.get('invoice_from') and data.get('invoice_to')">
+                                <strong>From:</strong> <span t-esc="data.get('invoice_from')"/>
+                                <strong>To:</strong> <span t-esc="data.get('invoice_to')"/>
+                            </t>
+                            <t t-elif="data.get('invoice_from')">
+                                <strong>From:</strong> <span t-esc="data.get('invoice_from')"/>
+                            </t>
+                            <t t-elif="data.get('invoice_to')">
+                                <strong>To:</strong> <span t-esc="data.get('invoice_to')"/>
+                            </t>
+                        </p>
+                    </div>
+
+                    <!-- Services Section -->
+                    <t t-set="services" t-value="report_data.get('services_by_type', {}).get('service', [])"/>
+                    <t t-if="len(services) &gt; 0">
+                        <div style="margin-bottom: 10px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; background-color: #f0f0f0; padding: 5px; border: 1px solid #000; font-weight: bold;">
+                                <span>Services</span>
+                                <span>
+                                    Qty: <span t-esc="'%.0f' % sum([s.get('qty', 0) for s in services])"/>
+                                    | Total: Rs. <span t-esc="'{:,.2f}'.format(sum([s.get('amount', 0) for s in services]))"/>
+                                </span>
+                            </div>
+                            <table style="width: 100%; border-collapse: collapse; margin-top: 5px;">
+                                <thead style="background-color: #e9ecef; font-weight: bold;">
+                                    <tr>
+                                        <th style="padding: 3px; text-align: left; border-bottom: 1px solid #000;">Service</th>
+                                        <th style="padding: 3px; text-align: right; width: 60px; border-bottom: 1px solid #000;">Qty</th>
+                                        <th style="padding: 3px; text-align: right; width: 100px; border-bottom: 1px solid #000;">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="services" t-as="service">
+                                        <tr style="border-bottom: 1px solid #ddd;">
+                                            <td style="padding: 3px;"><span t-esc="service.get('name', '')"/></td>
+                                            <td style="padding: 3px; text-align: right;"><span t-esc="'%.0f' % service.get('qty', 0)"/></td>
+                                            <td style="padding: 3px; text-align: right;">Rs. <span t-esc="'{:,.2f}'.format(service.get('amount', 0))"/></td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+                    </t>
+
+                    <!-- Vaccines Section -->
+                    <t t-set="vaccines" t-value="report_data.get('services_by_type', {}).get('vaccine', [])"/>
+                    <t t-if="len(vaccines) &gt; 0">
+                        <div style="margin-bottom: 10px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; background-color: #f0f0f0; padding: 5px; border: 1px solid #000; font-weight: bold;">
+                                <span>Vaccines / Medicines</span>
+                                <span>
+                                    Qty: <span t-esc="'%.0f' % sum([v.get('qty', 0) for v in vaccines])"/>
+                                    | Total: Rs. <span t-esc="'{:,.2f}'.format(sum([v.get('amount', 0) for v in vaccines]))"/>
+                                </span>
+                            </div>
+                            <table style="width: 100%; border-collapse: collapse; margin-top: 5px;">
+                                <thead style="background-color: #e9ecef; font-weight: bold;">
+                                    <tr>
+                                        <th style="padding: 3px; text-align: left; border-bottom: 1px solid #000;">Item</th>
+                                        <th style="padding: 3px; text-align: right; width: 60px; border-bottom: 1px solid #000;">Qty</th>
+                                        <th style="padding: 3px; text-align: right; width: 100px; border-bottom: 1px solid #000;">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="vaccines" t-as="vaccine">
+                                        <tr style="border-bottom: 1px solid #ddd;">
+                                            <td style="padding: 3px;"><span t-esc="vaccine.get('name', '')"/></td>
+                                            <td style="padding: 3px; text-align: right;"><span t-esc="'%.0f' % vaccine.get('qty', 0)"/></td>
+                                            <td style="padding: 3px; text-align: right;">Rs. <span t-esc="'{:,.2f}'.format(vaccine.get('amount', 0))"/></td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+                    </t>
+
+                    <!-- Tests Section -->
+                    <t t-set="tests" t-value="report_data.get('services_by_type', {}).get('test', [])"/>
+                    <t t-if="len(tests) &gt; 0">
+                        <div style="margin-bottom: 10px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; background-color: #f0f0f0; padding: 5px; border: 1px solid #000; font-weight: bold;">
+                                <span>Tests</span>
+                                <span>
+                                    Qty: <span t-esc="'%.0f' % sum([t.get('qty', 0) for t in tests])"/>
+                                    | Total: Rs. <span t-esc="'{:,.2f}'.format(sum([t.get('amount', 0) for t in tests]))"/>
+                                </span>
+                            </div>
+                            <table style="width: 100%; border-collapse: collapse; margin-top: 5px;">
+                                <thead style="background-color: #e9ecef; font-weight: bold;">
+                                    <tr>
+                                        <th style="padding: 3px; text-align: left; border-bottom: 1px solid #000;">Test</th>
+                                        <th style="padding: 3px; text-align: right; width: 60px; border-bottom: 1px solid #000;">Qty</th>
+                                        <th style="padding: 3px; text-align: right; width: 100px; border-bottom: 1px solid #000;">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="tests" t-as="test">
+                                        <tr style="border-bottom: 1px solid #ddd;">
+                                            <td style="padding: 3px;"><span t-esc="test.get('name', '')"/></td>
+                                            <td style="padding: 3px; text-align: right;"><span t-esc="'%.0f' % test.get('qty', 0)"/></td>
+                                            <td style="padding: 3px; text-align: right;">Rs. <span t-esc="'{:,.2f}'.format(test.get('amount', 0))"/></td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+                    </t>
+
+                    <!-- Grand Total -->
+                    <div style="margin: 15px 0; border: 2px solid #000; font-size: 13px;">
+    <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td style="padding: 5px; text-align: right; width: 80%;">Total (Before Discount):</td>
+            <td style="padding: 5px; text-align: right; font-weight: bold;">
+                Rs. <span t-esc="'{:,.2f}'.format(report_data.get('total_gross', 0))"/>
+            </td>
+        </tr>
+        <tr t-if="report_data.get('total_discount', 0) > 0">
+            <td style="padding: 5px; text-align: right; color: #d9534f;">Total Discount:</td>
+            <td style="padding: 5px; text-align: right; color: #d9534f;">
+                - Rs. <span t-esc="'{:,.2f}'.format(report_data.get('total_discount', 0))"/>
+            </td>
+        </tr>
+        <tr style="background-color: #f0f0f0; border-top: 1px solid #000; font-size: 15px;">
+            <td style="padding: 8px; text-align: right;"><strong>Total After Discount (Net):</strong></td>
+            <td style="padding: 8px; text-align: right;">
+                <strong>Rs. <span t-esc="'{:,.2f}'.format(report_data.get('total_sales', 0))"/></strong>
+            </td>
+        </tr>
+    </table>
+</div>
+
+                    <!-- Discounts Section -->
+                    <div style="margin: 10px 0; padding: 8px; border: 1px solid #000;">
+                        <div style="font-weight: bold; margin-bottom: 5px;">Discounts</div>
+                        <div>
+                            <span style="display: inline-block; width: 200px;">Total Discount Amount:</span>
+                            <span>Rs. <span t-esc="'{:,.2f}'.format(report_data.get('total_discount', 0))"/></span>
+                        </div>
+                        <div>
+                            <span style="display: inline-block; width: 200px;">Discount Invoices:</span>
+                            <span t-esc="report_data.get('discount_invoice_count', 0)"/>
+                        </div>
+                    </div>
+
+                    <!-- Payment Methods -->
+                    <t t-set="payments" t-value="report_data.get('payment_data', {})"/>
+<div style="margin: 10px 0; padding: 8px; border: 1px solid #000;">
+    <div style="font-weight: bold; margin-bottom: 5px;">Payment Methods</div>
+    <table style="width: 100%; border-collapse: collapse;">
+        <tbody>
+            <t t-if="payments">
+                <t t-foreach="payments.items()" t-as="payment">
+                    <tr>
+                        <td style="padding: 2px; width: 200px;"><span t-esc="payment[0]"/></td>
+                        <td style="padding: 2px; text-align: right;">
+                            Rs. <span t-esc="'{:,.2f}'.format(payment[1])"/>
+                        </td>
+                    </tr>
+                </t>
+                <tr style="border-top: 2px solid #000; font-weight: bold;">
+                    <td style="padding: 4px 2px;">Total Received</td>
+                    <td style="padding: 4px 2px; text-align: right;">
+                        Rs. <span t-esc="'{:,.2f}'.format(report_data.get('total_paid', 0))"/>
+                    </td>
+                </tr>
+            </t>
+            <t t-else="">
+                <tr>
+                    <td colspan="2" style="padding: 2px; text-align: center; color: #666;">No payments recorded</td>
+                </tr>
+            </t>
+        </tbody>
+    </table>
+</div>
+
+                    <!-- Invoice Payment Status -->
+                    <div style="margin: 10px 0; padding: 8px; border: 1px solid #000;">
+                        <div style="font-weight: bold; margin-bottom: 5px;">Invoice Payment Status</div>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tbody>
+                                <tr style="background-color: #d4edda;">
+                                    <td style="padding: 3px; width: 200px;"><strong>Paid Invoices:</strong></td>
+                                    <td style="padding: 3px; text-align: center; width: 80px;"><span t-esc="report_data.get('paid_invoices', {}).get('count', 0)"/> invoices</td>
+                                    <td style="padding: 3px; text-align: right;">Rs. <span t-esc="'{:,.2f}'.format(report_data.get('paid_invoices', {}).get('amount', 0))"/></td>
+                                </tr>
+                                <tr style="background-color: #fff3cd;">
+                                    <td style="padding: 3px;"><strong>Partially Paid:</strong></td>
+                                    <td style="padding: 3px; text-align: center;"><span t-esc="report_data.get('partial_invoices', {}).get('count', 0)"/> invoices</td>
+                                    <td style="padding: 3px; text-align: right;">Rs. <span t-esc="'{:,.2f}'.format(report_data.get('partial_invoices', {}).get('amount', 0))"/></td>
+                                </tr>
+                                <tr style="background-color: #f8d7da;">
+                                    <td style="padding: 3px;"><strong>Unpaid Invoices:</strong></td>
+                                    <td style="padding: 3px; text-align: center;"><span t-esc="report_data.get('unpaid_invoices', {}).get('count', 0)"/> invoices</td>
+                                    <td style="padding: 3px; text-align: right;">Rs. <span t-esc="'{:,.2f}'.format(report_data.get('unpaid_invoices', {}).get('amount', 0))"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Summary Statistics -->
+                    <div style="margin: 10px 0; padding: 8px; border: 1px solid #000;">
+                        <div style="font-weight: bold; margin-bottom: 5px;">Summary</div>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tbody>
+                                <tr>
+                                    <td style="padding: 2px; width: 200px;"><strong>Number of Invoices:</strong></td>
+                                    <td style="padding: 2px; text-align: right;"><span t-esc="report_data.get('total_invoices', 0)"/></td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 2px;"><strong>Total Services:</strong></td>
+                                    <td style="padding: 2px; text-align: right;"><span t-esc="report_data.get('service_counts', {}).get('service', 0)"/></td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 2px;"><strong>Total Vaccines:</strong></td>
+                                    <td style="padding: 2px; text-align: right;"><span t-esc="report_data.get('service_counts', {}).get('vaccine', 0)"/></td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 2px;"><strong>Total Tests:</strong></td>
+                                    <td style="padding: 2px; text-align: right;"><span t-esc="report_data.get('service_counts', {}).get('test', 0)"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </t>
+        </template>
+    </data>
+</odoo>

@@ -1,0 +1,3 @@
+# -*- coding: utf-8 -*-
+# No specific security rules needed as we're extending existing models
+# Access rights are inherited from the account module

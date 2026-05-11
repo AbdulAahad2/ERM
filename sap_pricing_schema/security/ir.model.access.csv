@@ -1,0 +1,13 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_pricing_schema_user,pricing.schema.user,model_pricing_schema,sap_pricing_schema.group_sap_pricing_user,1,1,1,0
+access_pricing_schema_admin,pricing.schema.admin,model_pricing_schema,sap_pricing_schema.group_sap_pricing_admin,1,1,1,1
+access_pricing_schema_system,pricing.schema.system,model_pricing_schema,base.group_system,1,1,1,1
+access_pricing_rule_user,pricing.rule.user,model_pricing_rule,sap_pricing_schema.group_sap_pricing_user,1,1,0,0
+access_pricing_rule_admin,pricing.rule.admin,model_pricing_rule,sap_pricing_schema.group_sap_pricing_admin,1,1,1,1
+access_pricing_rule_system,pricing.rule.system,model_pricing_rule,base.group_system,1,1,1,1
+access_pricing_breakdown_line_user,pricing.breakdown.line.user,model_pricing_breakdown_line,sap_pricing_schema.group_sap_pricing_user,1,0,0,0
+access_pricing_breakdown_line_admin,pricing.breakdown.line.admin,model_pricing_breakdown_line,sap_pricing_schema.group_sap_pricing_admin,1,1,1,1
+access_pricing_breakdown_line_system,pricing.breakdown.line.system,model_pricing_breakdown_line,base.group_system,1,1,1,1
+access_pricing_gl_mapping_user,pricing.gl.mapping.user,model_pricing_gl_mapping,sap_pricing_schema.group_sap_pricing_user,1,0,0,0
+access_pricing_gl_mapping_admin,pricing.gl.mapping.admin,model_pricing_gl_mapping,sap_pricing_schema.group_sap_pricing_admin,1,1,1,1
+access_pricing_gl_mapping_system,pricing.gl.mapping.system,model_pricing_gl_mapping,base.group_system,1,1,1,1

@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         Module Category  (shows as a section in Settings → Users & Companies → Groups)
+    ══════════════════════════════════════════════════════════════════ -->
+    <record id="module_category_sap_pricing" model="ir.module.category">
+        <field name="name">Odoo Pricing</field>
+        <field name="description">Controls access to the Odoo-style Pricing Schema module.</field>
+        <field name="sequence">20</field>
+        <!-- exclusive=True means a user can only be in ONE of the groups below -->
+        <field name="exclusive" eval="True"/>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         Groups
+         IMPORTANT: group_sap_pricing_admin does NOT imply group_sap_pricing_user.
+         They are mutually exclusive tiers under the same category.
+         Odoo's exclusive category enforces that a user is in at most one.
+    ══════════════════════════════════════════════════════════════════ -->
+    <record id="group_sap_pricing_user" model="res.groups">
+        <field name="name">User</field>
+        <field name="category_id" ref="module_category_sap_pricing"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <record id="group_sap_pricing_admin" model="res.groups">
+        <field name="name">Administrator</field>
+        <field name="category_id" ref="module_category_sap_pricing"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         Record Rules
+         ─ Admins: full access within their company (unchanged).
+         ─ Users:
+             READ  → any schema/rule in their company (so templates are visible).
+             WRITE → only schemas/rules they personally created.
+             CREATE → allowed (the ORM ignores domain on create).
+             UNLINK → denied at the ACL level (ir.model.access.csv).
+    ══════════════════════════════════════════════════════════════════ -->
+
+    <!-- ADMIN: full company-scoped access -->
+    <record id="rule_pricing_schema_admin" model="ir.rule">
+        <field name="name">Pricing Schema – Admin: company scope</field>
+        <field name="model_id" ref="model_pricing_schema"/>
+        <field name="groups" eval="[(4, ref('group_sap_pricing_admin'))]"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <!-- USER: read all in company, write/delete only own -->
+    <record id="rule_pricing_schema_user_read" model="ir.rule">
+        <field name="name">Pricing Schema – User: read all in company</field>
+        <field name="model_id" ref="model_pricing_schema"/>
+        <field name="groups" eval="[(4, ref('group_sap_pricing_user'))]"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="perm_read"   eval="True"/>
+        <field name="perm_write"  eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_pricing_schema_user_write" model="ir.rule">
+        <field name="name">Pricing Schema – User: write/create own only</field>
+        <field name="model_id" ref="model_pricing_schema"/>
+        <field name="groups" eval="[(4, ref('group_sap_pricing_user'))]"/>
+        <!-- is_template=True rows are admin-managed; users must not overwrite them -->
+        <field name="domain_force">
+            [('create_uid', '=', user.id), ('is_template', '=', False)]
+        </field>
+        <field name="perm_read"   eval="False"/>
+        <field name="perm_write"  eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <!-- ADMIN: pricing rules full access -->
+    <record id="rule_pricing_rule_admin" model="ir.rule">
+        <field name="name">Pricing Rule – Admin: company scope</field>
+        <field name="model_id" ref="model_pricing_rule"/>
+        <field name="groups" eval="[(4, ref('group_sap_pricing_admin'))]"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <!-- USER: read all rules in company, write only rules on own schemas -->
+    <record id="rule_pricing_rule_user_read" model="ir.rule">
+        <field name="name">Pricing Rule – User: read all in company</field>
+        <field name="model_id" ref="model_pricing_rule"/>
+        <field name="groups" eval="[(4, ref('group_sap_pricing_user'))]"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="perm_read"   eval="True"/>
+        <field name="perm_write"  eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_pricing_rule_user_write" model="ir.rule">
+        <field name="name">Pricing Rule – User: write only rules on own schemas</field>
+        <field name="model_id" ref="model_pricing_rule"/>
+        <field name="groups" eval="[(4, ref('group_sap_pricing_user'))]"/>
+        <field name="domain_force">[('schema_id.create_uid', '=', user.id)]</field>
+        <field name="perm_read"   eval="False"/>
+        <field name="perm_write"  eval="True"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <!-- GL Mapping: users read-only, admins full access -->
+    <record id="rule_pricing_gl_mapping_user" model="ir.rule">
+        <field name="name">Pricing GL Mapping – User: read-only</field>
+        <field name="model_id" ref="model_pricing_gl_mapping"/>
+        <field name="groups" eval="[(4, ref('group_sap_pricing_user'))]"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="perm_read"   eval="True"/>
+        <field name="perm_write"  eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_pricing_gl_mapping_admin" model="ir.rule">
+        <field name="name">Pricing GL Mapping – Admin: company scope</field>
+        <field name="model_id" ref="model_pricing_gl_mapping"/>
+        <field name="groups" eval="[(4, ref('group_sap_pricing_admin'))]"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+
+</odoo>

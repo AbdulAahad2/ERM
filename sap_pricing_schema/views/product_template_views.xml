@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Product Template Form View Inheritance -->
+    <record id="view_product_template_form_inherit_sap" model="ir.ui.view">
+        <field name="name">product.template.form.inherit.sap</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='group_standard_price']" position="after">
+                <group string="Odoo Pricing" name="sap_pricing">
+                    <field name="mrp_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                    <field name="standard_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Product Template Tree View Inheritance -->
+    <record id="view_product_template_tree_inherit_sap" model="ir.ui.view">
+        <field name="name">product.template.tree.inherit.sap</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_tree_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='list_price']" position="after">
+                <field name="mrp_price" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

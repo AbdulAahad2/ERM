@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <record id="action_pricing_rule" model="ir.actions.act_window">
+        <field name="name">Pricing Steps</field>
+        <field name="res_model">pricing.rule</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_pricing_schema" model="ir.actions.act_window">
+        <field name="name">Pricing Schemas</field>
+        <field name="res_model">pricing.schema</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_active_schemas': 1}</field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         List View
+    ══════════════════════════════════════════════════════════════════ -->
+    <record id="view_pricing_schema_tree" model="ir.ui.view">
+        <field name="name">pricing.schema.tree</field>
+        <field name="model">pricing.schema</field>
+        <field name="arch" type="xml">
+            <list string="Pricing Schemas"
+                  decoration-muted="active == False"
+                  decoration-info="is_template == True">
+                <field name="sequence" widget="handle"/>
+                <field name="is_template" optional="show"
+                       groups="sap_pricing_schema.group_sap_pricing_admin"/>
+                <field name="template_code" optional="show"
+                       groups="sap_pricing_schema.group_sap_pricing_admin"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="priority"
+                       groups="sap_pricing_schema.group_sap_pricing_admin"/>
+                <field name="date_from" string="Valid From" optional="show"/>
+                <field name="date_to"   string="Valid To"   optional="show"/>
+                <field name="rule_count" string="Steps"/>
+                <!-- Archive toggle: admins only -->
+                <field name="active" widget="boolean_toggle"
+                       groups="sap_pricing_schema.group_sap_pricing_admin"/>
+                <field name="customer_ids"
+                       string="Customers"
+                       widget="many2many_tags"
+                       optional="show"
+                       groups="sap_pricing_schema.group_sap_pricing_admin"/>
+                <field name="product_ids"
+                       string="Products"
+                       widget="many2many_tags"
+                       optional="show"
+                       groups="sap_pricing_schema.group_sap_pricing_admin"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         Form View — single layout, visibility driven by is_pricing_admin
+         ──────────────────────────────────────────────────────────────────
+         WHY invisible= instead of groups= on blocks?
+         groups= on a container only hides the element from users who are
+         NOT in the named group.  But because group_sap_pricing_admin
+         implies base.group_user, admins also satisfy the group_sap_pricing_user
+         check, so they end up seeing both blocks.  Using a non-stored computed
+         boolean (is_pricing_admin) evaluated client-side via invisible= is the
+         reliable, duplication-free solution.
+    ══════════════════════════════════════════════════════════════════ -->
+    <record id="view_pricing_schema_form" model="ir.ui.view">
+        <field name="name">pricing.schema.form</field>
+        <field name="model">pricing.schema</field>
+        <field name="arch" type="xml">
+            <form string="Pricing Schema">
+
+                <!-- ── Header buttons: admins only ── -->
+                <header invisible="not is_pricing_admin">
+                    <button name="action_copy_from_template"
+                            string="Copy From Source Template"
+                            type="object" class="btn-primary"
+                            invisible="not source_template_id or rule_ids"/>
+                    <button name="action_load_standard_template"
+                            string="Load Standard Template (RVAA01)"
+                            type="object" class="btn-secondary"
+                            confirm="This will create a standard SAP-style procedure. Continue?"
+                            invisible="rule_ids or is_template"/>
+                    <button name="action_save_as_template"
+                            string="Save as Template"
+                            type="object" class="btn-secondary"
+                            invisible="is_template or not rule_ids"/>
+                    <button name="toggle_active" string="Archive"
+                            type="object" class="btn-secondary" invisible="not active"/>
+                    <button name="toggle_active" string="Unarchive"
+                            type="object" class="btn-secondary" invisible="active"/>
+                </header>
+
+                <sheet>
+                    <!-- ── Stat buttons: admins only ── -->
+                    <div class="oe_button_box" name="button_box"
+                         invisible="not is_pricing_admin">
+                        <button name="toggle_active" type="object"
+                                class="oe_stat_button" icon="fa-archive">
+                            <field name="active" widget="boolean_button"
+                                   options="{'terminology': 'archive'}"/>
+                        </button>
+                        <button name="%(action_pricing_rule)d" type="action"
+                                class="oe_stat_button" icon="fa-list-ol">
+                            <field name="rule_count" widget="statinfo" string="Steps"/>
+                        </button>
+                    </div>
+
+                    <!-- ── Hidden flags needed for invisible= expressions ── -->
+                    <field name="is_template"     invisible="1"/>
+                    <field name="is_pricing_admin" invisible="1"/>
+
+                    <!-- ── Schema name ── -->
+                    <div class="oe_title">
+                        <h1>
+                            <!-- Admin: editable -->
+                            <field name="name" placeholder="Schema Name"
+                                  />
+                            <!-- User: read-only display -->
+                            <field name="name" placeholder="Schema Name"
+                                   readonly="1"
+                                   invisible="is_pricing_admin"/>
+                        </h1>
+                    </div>
+
+                    <!-- ══════════════════════════════════════════════════
+                         ADMIN config group
+                         Shown only when is_pricing_admin = True
+                    ══════════════════════════════════════════════════ -->
+                    <group invisible="not is_pricing_admin">
+                        <group string="Schema Settings">
+                            <field name="code"/>
+                            <field name="template_code"
+                                   invisible="not is_template"/>
+                            <field name="sequence"/>
+                            <field name="priority"/>
+                            <field name="source_template_id"
+                                   options="{'no_create': True}"/>
+                        </group>
+                        <group string="Applicability">
+                            <field name="match_all_customers"/>
+                            <field name="match_all_products"/>
+                            <field name="date_from" string="Valid From"
+                                   help="First date this schema is active. Leave blank for no lower bound."/>
+                            <field name="date_to" string="Valid To"
+                                   help="Last date this schema is active. Used to auto-select the historically correct schema on return orders / credit notes."/>
+                        </group>
+                    </group>
+
+                    <!-- ══════════════════════════════════════════════════
+                         USER config group
+                         Shown only when is_pricing_admin = False
+                    ══════════════════════════════════════════════════ -->
+                    <group invisible="is_pricing_admin">
+                        <group>
+                            <field name="source_template_id"
+                                   options="{'no_create': True}"
+                                   required="1"
+                                   help="You must base every new schema on an approved template."/>
+                            <field name="date_from" string="Valid From"/>
+                            <field name="date_to"   string="Valid To"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <!-- ── Tab 1: Pricing Procedure ── -->
+                        <page string="Pricing Procedure" name="pricing_procedure">
+
+                            <!-- ADMIN: all columns, fully editable, can add/delete rows -->
+                            <field name="rule_ids" nolabel="1"
+                                   invisible="not is_pricing_admin">
+                                <list editable="bottom">
+                                    <field name="step"             string="Step"       width="60"  optional="show"/>
+                                    <field name="counter"          string="Cntr"       width="50"  optional="show"/>
+                                    <field name="condition_type"   string="CTyp"       width="120" optional="show"/>
+                                    <field name="name"             string="Description"/>
+                                    <field name="account_id"       string="GL Account"             optional="show"/>
+                                    <field name="account_key"      string="Account Key"            optional="show"/>
+                                    <field name="line_type"        string="Category"   width="110" optional="show"/>
+                                    <field name="rule_type"        optional="show"/>
+                                    <field name="from_step"        string="From"       width="60"  optional="show"/>
+                                    <field name="to_step"          string="To"         width="60"  optional="show"/>
+                                    <field name="calculation_type" optional="show"/>
+                                    <field name="display_value"    string="Rate/Value" readonly="1" width="100"/>
+                                    <field name="value"            string="Value"      width="90"/>
+                                    <field name="is_mandatory"     widget="boolean_toggle" width="70" string="Mand." optional="show"/>
+                                    <field name="is_statistical"   widget="boolean_toggle" width="70" string="Stat." optional="show"/>
+                                    <field name="tax_base_source"  string="Tax Base"   width="130" optional="show"
+                                           invisible="line_type != 'tax'"/>
+                                </list>
+                            </field>
+
+                            <!-- USER: only Description + Value editable, no add/delete -->
+                            <field name="rule_ids" nolabel="1"
+                                   invisible="is_pricing_admin">
+                                <list editable="bottom" create="0" delete="0">
+                                    <!-- Visible, editable -->
+                                    <field name="step"           string="Step"        readonly="1" width="60"/>
+                                    <field name="condition_type" string="Cond. Type"  readonly="1" width="120" optional="show"/>
+                                    <field name="name"           string="Description"/>
+                                    <field name="line_type"      string="Category"    readonly="1" width="110"/>
+                                    <field name="display_value"  string="Rate/Value"  readonly="1" width="100"/>
+                                    <field name="value"          string="Value"       width="90"/>
+                                    <!-- Hidden structural fields — must travel in payload so ORM
+                                         doesn't reset them to defaults on save -->
+                                    <field name="counter"          readonly="1" column_invisible="1"/>
+                                    <field name="rule_type"        readonly="1" column_invisible="1"/>
+                                    <field name="calculation_type" readonly="1" column_invisible="1"/>
+                                    <field name="from_step"        readonly="1" column_invisible="1"/>
+                                    <field name="to_step"          readonly="1" column_invisible="1"/>
+                                    <field name="is_statistical"   readonly="1" column_invisible="1"/>
+                                    <field name="is_mandatory"     readonly="1" column_invisible="1"/>
+                                    <field name="tax_id"           readonly="1" column_invisible="1"/>
+                                    <field name="account_id"       readonly="1" column_invisible="1"/>
+                                    <field name="account_key"      readonly="1" column_invisible="1"/>
+                                </list>
+                            </field>
+
+                        </page>
+
+                        <!-- ── Tab 2: Applicability — admins only ── -->
+                        <page string="Applicability" name="applicability"
+                              >
+                            <group>
+                                <group string="Customers" invisible="match_all_customers">
+                                    <field name="customer_ids" widget="many2many_tags" nolabel="1"/>
+                                </group>
+                                <group string="Products" invisible="match_all_products">
+                                    <field name="product_ids"      widget="many2many_tags"/>
+                                    <field name="product_tmpl_ids" widget="many2many_tags"/>
+                                    <field name="category_ids"     widget="many2many_tags"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_pricing_schema_search" model="ir.ui.view">
+        <field name="name">pricing.schema.search</field>
+        <field name="model">pricing.schema</field>
+        <field name="arch" type="xml">
+            <search string="Search Pricing Schema">
+                <field name="name"/>
+                <field name="code"/>
+                <filter string="Templates"  name="templates"
+                        domain="[('is_template','=',True)]"/>
+                <filter string="Active"     name="active_schemas"
+                        domain="[('is_template','=',False),('active','=',True)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_pricing_schema_templates" model="ir.actions.act_window">
+        <field name="name">Schema Templates</field>
+        <field name="res_model">pricing.schema</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('is_template', '=', True)]</field>
+    </record>
+
+</odoo>

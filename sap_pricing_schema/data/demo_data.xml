@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- ── Standard Customer Schema ───────────────────────────────────── -->
+
+    <record id="pricing_schema_demo_standard" model="pricing.schema">
+        <field name="name">Standard Customer Discount</field>
+        <field name="code">STD_DISC</field>
+        <field name="sequence">10</field>
+        <field name="priority">5</field>
+        <field name="match_all_customers">True</field>
+        <field name="match_all_products">True</field>
+    </record>
+
+    <!-- Step 10 – Base Price (PR00) -->
+    <record id="pricing_rule_std_base" model="pricing.rule">
+        <field name="name">Base Price</field>
+        <field name="schema_id" ref="pricing_schema_demo_standard"/>
+        <field name="step">10</field>
+        <field name="counter">0</field>
+        <field name="condition_type">PR00</field>
+        <field name="line_type">condition</field>
+        <field name="rule_type">base_price</field>
+        <field name="calculation_type">fixed</field>
+        <field name="value">0.0</field>
+        <field name="is_mandatory">True</field>
+    </record>
+
+    <!-- Step 20 – Customer Discount (K007) -->
+    <record id="pricing_rule_std_discount" model="pricing.rule">
+        <field name="name">Standard Customer Discount</field>
+        <field name="schema_id" ref="pricing_schema_demo_standard"/>
+        <field name="step">20</field>
+        <field name="counter">0</field>
+        <field name="condition_type">K007</field>
+        <field name="line_type">condition</field>
+        <field name="rule_type">discount</field>
+        <field name="calculation_type">percentage</field>
+        <field name="value">10.0</field>
+        <field name="from_step">10</field>
+        <field name="to_step">10</field>
+    </record>
+
+    <!-- Step 30 – Handling Surcharge (HD00) -->
+    <record id="pricing_rule_std_surcharge" model="pricing.rule">
+        <field name="name">Handling Surcharge</field>
+        <field name="schema_id" ref="pricing_schema_demo_standard"/>
+        <field name="step">30</field>
+        <field name="counter">0</field>
+        <field name="condition_type">HD00</field>
+        <field name="line_type">condition</field>
+        <field name="rule_type">surcharge</field>
+        <field name="calculation_type">percentage</field>
+        <field name="value">5.0</field>
+        <field name="from_step">10</field>
+        <field name="to_step">10</field>
+    </record>
+
+    <!-- Step 700 – Net Value Subtotal -->
+    <record id="pricing_rule_std_subtotal" model="pricing.rule">
+        <field name="name">Net Value (before tax)</field>
+        <field name="schema_id" ref="pricing_schema_demo_standard"/>
+        <field name="step">700</field>
+        <field name="counter">0</field>
+        <field name="condition_type">SUB1</field>
+        <field name="line_type">subtotal</field>
+        <field name="rule_type">discount</field>
+        <field name="calculation_type">percentage</field>
+        <field name="value">0.0</field>
+        <field name="from_step">10</field>
+        <field name="to_step">300</field>
+    </record>
+
+    <!-- ── VIP Customer Schema ─────────────────────────────────────────── -->
+
+    <record id="pricing_schema_demo_vip" model="pricing.schema">
+        <field name="name">VIP Customer Pricing</field>
+        <field name="code">VIP_PRICE</field>
+        <field name="sequence">5</field>
+        <field name="priority">10</field>
+        <field name="match_all_customers">False</field>
+        <field name="match_all_products">True</field>
+    </record>
+
+    <!-- Step 10 – Base Price (PR00) -->
+    <record id="pricing_rule_vip_base" model="pricing.rule">
+        <field name="name">Base Price</field>
+        <field name="schema_id" ref="pricing_schema_demo_vip"/>
+        <field name="step">10</field>
+        <field name="counter">0</field>
+        <field name="condition_type">PR00</field>
+        <field name="line_type">condition</field>
+        <field name="rule_type">base_price</field>
+        <field name="calculation_type">fixed</field>
+        <field name="value">0.0</field>
+        <field name="is_mandatory">True</field>
+    </record>
+
+    <!-- Step 20 – VIP Discount (K007) -->
+    <record id="pricing_rule_vip_discount" model="pricing.rule">
+        <field name="name">VIP Customer Discount</field>
+        <field name="schema_id" ref="pricing_schema_demo_vip"/>
+        <field name="step">20</field>
+        <field name="counter">0</field>
+        <field name="condition_type">K007</field>
+        <field name="line_type">condition</field>
+        <field name="rule_type">discount</field>
+        <field name="calculation_type">percentage</field>
+        <field name="value">20.0</field>
+        <field name="from_step">10</field>
+        <field name="to_step">10</field>
+    </record>
+
+    <!-- Step 30 – VIP Fixed Surcharge (HD00) -->
+    <record id="pricing_rule_vip_surcharge" model="pricing.rule">
+        <field name="name">VIP Fixed Surcharge</field>
+        <field name="schema_id" ref="pricing_schema_demo_vip"/>
+        <field name="step">30</field>
+        <field name="counter">0</field>
+        <field name="condition_type">HD00</field>
+        <field name="line_type">condition</field>
+        <field name="rule_type">surcharge</field>
+        <field name="calculation_type">fixed</field>
+        <field name="value">10.0</field>
+        <field name="from_step">0</field>
+        <field name="to_step">0</field>
+    </record>
+
+    <!-- Step 700 – Net Value Subtotal -->
+    <record id="pricing_rule_vip_subtotal" model="pricing.rule">
+        <field name="name">Net Value (before tax)</field>
+        <field name="schema_id" ref="pricing_schema_demo_vip"/>
+        <field name="step">700</field>
+        <field name="counter">0</field>
+        <field name="condition_type">SUB1</field>
+        <field name="line_type">subtotal</field>
+        <field name="rule_type">discount</field>
+        <field name="calculation_type">percentage</field>
+        <field name="value">0.0</field>
+        <field name="from_step">10</field>
+        <field name="to_step">300</field>
+    </record>
+
+</odoo>

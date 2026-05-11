@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <menuitem id="menu_sap_pricing_root" name="Odoo Pricing" sequence="20"/>
+
+    <!-- Both roles see the main Schemas list -->
+    <menuitem id="menu_pricing_schema" name="Pricing Schemas"
+              parent="menu_sap_pricing_root" action="action_pricing_schema" sequence="10"/>
+
+    <!-- Admins only: template management, raw rules list, configuration -->
+    <menuitem id="menu_pricing_schema_templates" name="Schema Templates"
+              parent="menu_sap_pricing_root" action="action_pricing_schema_templates"
+              groups="sap_pricing_schema.group_sap_pricing_admin"
+              sequence="15"/>
+
+    <menuitem id="menu_pricing_rule" name="Pricing Rules"
+              parent="menu_sap_pricing_root" action="action_pricing_rule"
+              groups="sap_pricing_schema.group_sap_pricing_admin"
+              sequence="20"/>
+
+    <menuitem id="menu_sap_pricing_config" name="Configuration"
+              parent="menu_sap_pricing_root"
+              groups="sap_pricing_schema.group_sap_pricing_admin"
+              sequence="100"/>
+
+    <menuitem id="menu_pricing_gl_mapping" name="GL Account Mappings"
+              parent="menu_sap_pricing_config" action="action_pricing_gl_mapping"
+              groups="sap_pricing_schema.group_sap_pricing_admin"
+              sequence="20"/>
+
+    <record id="action_sap_pricing_users" model="ir.actions.act_window">
+        <field name="name">Pricing Users &amp; Access</field>
+        <field name="res_model">res.users</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{
+            'search_default_group_sap_pricing': 1
+        }</field>
+    </record>
+
+    <menuitem id="menu_sap_pricing_users"
+              name="Users &amp; Access"
+              parent="menu_sap_pricing_config"
+              action="action_sap_pricing_users"
+              groups="sap_pricing_schema.group_sap_pricing_admin"
+              sequence="50"/>
+</odoo>

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_purchase_approval_root" name="PR Approvals" sequence="10"/>
+    <menuitem id="menu_pr_approval_main" name="Requests" parent="menu_purchase_approval_root" sequence="10"/>
+
+    <record id="view_purchase_approval_tree" model="ir.ui.view">
+        <field name="name">purchase.approval.tree</field>
+        <field name="model">purchase.approval</field>
+        <field name="arch" type="xml">
+            <list decoration-info="state == 'waiting_approval'"
+                  decoration-success="state == 'approved'"
+                  decoration-danger="state == 'rejected'">
+                <field name="name"/>
+                <field name="date"/> <field name="requester_id"/>
+                <field name="warehouse_id" string="Plants"/>
+                <field name="approver_id"/>
+                <field name="state" widget="badge" decoration-danger="state == 'rejected'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_purchase_approval_form" model="ir.ui.view">
+        <field name="name">purchase.approval.form</field>
+        <field name="model">purchase.approval</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_submit_for_approval" string="Submit" type="object" class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_approve" string="Approve" type="object" class="oe_highlight" invisible="state != 'waiting_approval' or not is_current_user_approver"/>
+                    <button name="action_reject_wizard" string="Reject" type="object" class="btn-danger" invisible="state != 'waiting_approval' or not is_current_user_approver"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,waiting_approval,approved,rejected"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="requester_id" readonly="1"/>
+                            <field name="department_id" readonly="state != 'draft'" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="warehouse_id" required="1" readonly="state != 'draft'" string="Plants" options="{'no_create': True, 'no_create_edit': True}"/>
+                        </group>
+                        <group>
+                            <field name="date" readonly="state != 'draft'"/>
+                            <field name="approver_id" readonly="1"/>
+                            <field name="is_current_user_approver" invisible="1"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Products" name="products">
+                            <field name="line_ids" readonly="state != 'draft'">
+                                <list editable="bottom">
+                                    <field name="product_id" options="{'no_create': True}"/>
+                                    <field name="description"/>
+                                    <field name="quantity"/>
+                                    <field name="product_uom_id" groups="uom.group_uom"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Rejection Details" name="rejection" invisible="state != 'rejected'">
+                            <group>
+                                <field name="rejection_reason" readonly="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_purchase_approval_reject_wizard_form" model="ir.ui.view">
+        <field name="name">purchase.approval.reject.wizard.form</field>
+        <field name="model">purchase.approval.reject.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Reject Request">
+                <group>
+                    <field name="reason" placeholder="Explain why this request is being rejected..."/>
+                </group>
+                <footer>
+                    <button name="action_reject_confirm" string="Reject" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_purchase_approval" model="ir.actions.act_window">
+        <field name="name">Purchase Requisition</field>
+        <field name="res_model">purchase.approval</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_sub_purchase_approval" parent="menu_pr_approval_main" action="action_purchase_approval" sequence="10"/>
+</odoo>

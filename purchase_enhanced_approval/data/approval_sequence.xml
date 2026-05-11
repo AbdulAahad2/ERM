@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Default Approval Levels Configuration -->
+        <record id="approval_level_1" model="purchase.approval.config">
+            <field name="name">Level 1 - Department Manager</field>
+            <field name="level">1</field>
+            <field name="sequence">10</field>
+            <field name="approver_id" ref="base.user_admin"/>
+        </record>
+
+        <record id="approval_level_2" model="purchase.approval.config">
+            <field name="name">Level 2 - Finance Manager</field>
+            <field name="level">2</field>
+            <field name="sequence">20</field>
+            <field name="approver_id" ref="base.user_admin"/>
+        </record>
+
+        <record id="approval_level_3" model="purchase.approval.config">
+            <field name="name">Level 3 - Operations Director</field>
+            <field name="level">3</field>
+            <field name="sequence">30</field>
+            <field name="approver_id" ref="base.user_admin"/>
+        </record>
+
+        <record id="approval_level_4" model="purchase.approval.config">
+            <field name="name">Level 4 - CEO</field>
+            <field name="level">4</field>
+            <field name="sequence">40</field>
+            <field name="approver_id" ref="base.user_admin"/>
+        </record>
+
+        <!-- Default Plant Records -->
+        <record id="seq_purchase_approval" model="ir.sequence">
+            <field name="name">Purchase Approval Sequence</field>
+            <field name="code">purchase.approval</field>
+            <field name="prefix">PR-%(year)s-</field>
+            <field name="padding">3</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>

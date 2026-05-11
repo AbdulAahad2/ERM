@@ -1,0 +1,64 @@
+<odoo>
+    <record id="purchase_order_form_approval_ui" model="ir.ui.view">
+        <field name="name">purchase.order.form.approval.ui</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//header//button[@name='button_confirm']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//header//button[@name='button_confirm'][2]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <xpath expr="//header" position="inside">
+                <field name="current_approver_id" invisible="1"/>
+                <field name="approval_level" invisible="1"/>
+                <field name="is_admin" invisible="1"/>
+            </xpath>
+
+            <xpath expr="//header" position="inside">
+                <button name="action_send_for_approval"
+                        string="Send for Approval"
+                        type="object"
+                        class="oe_highlight"
+                        invisible="state != 'draft' or approval_level != 0"/>
+
+                <button name="action_department_approve"
+                        string="Approve"
+                        type="object"
+                        class="oe_highlight"
+                        invisible="state == 'purchase' or (not is_admin and (current_approver_id != uid or approval_level == 0))"/>
+            </xpath>
+
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-info text-center mb-0"
+                     role="status"
+                     invisible="approval_level == 0 or state == 'purchase'">
+                    <strong>Approval Status:</strong> Currently at
+                    <span class="badge rounded-pill text-bg-primary">Stage <field name="approval_level"/></span>
+                    waiting for <strong><field name="current_approver_id" readonly="1"/></strong>
+                </div>
+            </xpath>
+
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="department_id"
+                       options="{'no_create': True}"
+                       readonly="not is_admin and approval_level != 0"/>
+               <xpath expr="//field[@name='purchase_approval_id']" position="replace">
+                    <field name="purchase_approval_ids"
+                           placeholder="Select Approved Requests..."
+                           widget="many2many_tags"
+                           options="{'no_create': True}"
+                           readonly="not is_admin and approval_level != 0"/>
+                </xpath>
+            </xpath>
+
+            <xpath expr="//field[@name='order_line']" position="attributes">
+                <attribute name="readonly">not is_admin and approval_level != 0</attribute>
+            </xpath>
+
+        </field>
+    </record>
+</odoo>

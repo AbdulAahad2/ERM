@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ================================================================
+         EXPORT WIZARD
+    ================================================================ -->
+    <record id="view_pr_export_wizard_form" model="ir.ui.view">
+        <field name="name">purchase.approval.export.wizard.form</field>
+        <field name="model">purchase.approval.export.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Export Purchase Requisitions">
+
+                <!-- CHOOSE state: pick records and export -->
+                <group invisible="state != 'choose'">
+                    <field name="approval_ids" widget="many2many_tags"
+                           options="{'no_create': True}"
+                           string="Requisitions to Export"/>
+                </group>
+
+                <!-- DONE state: show download link -->
+                <group invisible="state != 'done'">
+                    <field name="file_data" filename="file_name"
+                           widget="binary" string="Download CSV"/>
+                    <field name="file_name" invisible="1"/>
+                </group>
+
+                <field name="state" invisible="1"/>
+
+                <footer>
+                    <!-- Step 1: generate the file -->
+                    <button name="action_export"
+                            string="Export to CSV"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'choose'"/>
+
+                    <!-- Step 2: after generation, just close -->
+                    <button string="Close"
+                            class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Server action that appears in the gear ⚙ menu of the PR list -->
+    <record id="action_pr_export_wizard" model="ir.actions.server">
+        <field name="name">Export Requisitions (CSV)</field>
+        <field name="model_id" ref="model_purchase_approval"/>
+        <field name="binding_model_id" ref="model_purchase_approval"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+action = {
+    'type': 'ir.actions.act_window',
+    'name': 'Export Purchase Requisitions',
+    'res_model': 'purchase.approval.export.wizard',
+    'view_mode': 'form',
+    'target': 'new',
+    'context': {'active_ids': env.context.get('active_ids', []),
+                'active_model': 'purchase.approval'},
+}
+        </field>
+    </record>
+
+
+    <!-- ================================================================
+         IMPORT WIZARD
+    ================================================================ -->
+    <record id="view_pr_import_wizard_form" model="ir.ui.view">
+        <field name="name">purchase.approval.import.wizard.form</field>
+        <field name="model">purchase.approval.import.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Import Purchase Requisitions from CSV">
+
+                <!-- CHOOSE state: upload file -->
+                <group invisible="state != 'choose'">
+                    <div class="alert alert-info" role="alert" style="margin-bottom:12px;">
+                        <strong>Expected CSV columns:</strong>
+                        pr_reference, date, requester_login, department, warehouse,
+                        product_reference, description, quantity, uom
+                        <br/>
+                        PRs will be created in <strong>Draft</strong> state with no approver set.
+                        Use "Bulk Send for Approval" from the gear menu afterwards.
+                    </div>
+                    <field name="file_data" filename="file_name"
+                           widget="binary" string="CSV File" required="1"/>
+                    <field name="file_name" invisible="1"/>
+                </group>
+
+                <!-- DONE state: show results -->
+                <group invisible="state != 'done'">
+                    <field name="result_message"
+                           widget="text"
+                           string="Import Result"
+                           readonly="1"
+                           style="font-family: monospace; white-space: pre-wrap;"/>
+                </group>
+
+                <field name="state" invisible="1"/>
+
+                <footer>
+                    <button name="action_import"
+                            string="Import"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'choose'"/>
+                    <button string="Close"
+                            class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Server action for import — also in the gear ⚙ menu (list view) -->
+    <record id="action_pr_import_wizard" model="ir.actions.server">
+        <field name="name">Import Requisitions (CSV)</field>
+        <field name="model_id" ref="model_purchase_approval"/>
+        <field name="binding_model_id" ref="model_purchase_approval"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+action = {
+    'type': 'ir.actions.act_window',
+    'name': 'Import Purchase Requisitions',
+    'res_model': 'purchase.approval.import.wizard',
+    'view_mode': 'form',
+    'target': 'new',
+}
+        </field>
+    </record>
+
+
+    <!-- ================================================================
+         BULK SEND FOR APPROVAL — gear ⚙ server action
+         Lets the user select multiple draft PRs in the list and
+         submit them all for approval in one click.
+    ================================================================ -->
+    <record id="action_pr_bulk_send_approval" model="ir.actions.server">
+        <field name="name">Bulk Send for Approval</field>
+        <field name="model_id" ref="model_purchase_approval"/>
+        <field name="binding_model_id" ref="model_purchase_approval"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+            records = env['purchase.approval'].browse(env.context.get('active_ids', []))
+            errors = []
+            sent = 0
+            for rec in records:
+                if rec.state != 'draft':
+                    errors.append(f'{rec.name}: skipped (not in Draft state)')
+                    continue
+                try:
+                    rec.action_submit_for_approval()
+                    sent += 1
+                except Exception as e:
+                    errors.append(f'{rec.name}: {e}')
+
+            msg = f'{sent} PR(s) submitted for approval.'
+            if errors:
+                msg += '\n\nIssues:\n' + '\n'.join(errors)
+                raise UserError(msg)
+            else:
+                env['bus.bus']._sendone(
+                    env.user.partner_id,
+                    'simple_notification',
+                    {'title': 'Bulk Send for Approval', 'message': msg, 'type': 'success'}
+                )
+        </field>
+    </record>
+
+</odoo>

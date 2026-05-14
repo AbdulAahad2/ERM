@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    views/product_template_views.xml
+
+    Extend the standard product.template form to show the two new fields
+    on the "Purchase" tab, in a clearly labelled "Procurement Controls" group.
+
+    Both fields appear under the existing vendor pricelist section so they
+    are logically co-located with purchasing configuration.
+-->
+<odoo>
+
+    <record id="product_template_form_view_purchase_tab_mps_controls"
+            model="ir.ui.view">
+        <field name="name">product.template.form.mps.procurement.controls</field>
+        <field name="model">product.template</field>
+        <!-- Inherit the core product form, not the purchase-specific extension,
+             so the group appears regardless of whether the Purchase tab is
+             contributed by mrp_mps or purchase. -->
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+
+            <!--
+                Place the group BEFORE the "Sales" page separator at the bottom
+                of the "Purchase" tab.  We anchor on the purchase_tab page if
+                it exists; if the integrator has a different tab structure the
+                group will fall back to the General Information tab.
+            -->
+            <xpath expr="//page[@name='purchase']" position="inside">
+
+                <group string="Procurement Controls"
+                       name="mps_procurement_controls"
+                       col="2"
+                       colspan="2">
+
+                    <!--
+                        Minimum Order Quantity
+                        ─────────────────────
+                        Vendor will not supply fewer units than this in one order.
+                        MPS replenishment rounds UP to the nearest multiple.
+                    -->
+                    <field name="minimum_order_qty"
+                           string="Minimum Order Qty"
+                           widget="float"
+                           help="Vendor minimum: the ordered qty will be rounded UP to the nearest multiple of this value. Example: min=500, required=1200 → ordered=1500. Leave 0 to disable."/>
+
+                    <!--
+                        Safety Stock
+                        ────────────
+                        Added to the MPS replenishment qty when on-hand reaches 0.
+                    -->
+                    <field name="safety_stock"
+                           string="Safety Stock"
+                           widget="float"
+                           help="Buffer added to the replenishment qty when forecasted on-hand ≤ 0. Example: safety=2000, required=2500, on-hand=0 → ordered=4500. Leave 0 to disable."/>
+
+                </group>
+
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,43 @@
+<odoo>
+    <record id="view_picking_form_inherit_zafar" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit.zafar</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='other_infos']" position="before">
+                <group string="Logistics Details">
+                    <group>
+                        <field name="driver_name"/>
+                        <field name="truck_no"/>
+                        <field name="delivery_via"/>
+                    </group>
+                    <group>
+                        <field name="builty_no"/>
+                        <field name="seal_no"/>
+                        <field name="storage_location_code"/>
+                    </group>
+                </group>
+            </xpath>
+
+            <xpath expr="//page[@name='extra']" position="inside">
+                <group>
+                    <group string="Partner Information">
+                        <field name="x_deliver_to_id"
+                               string="Deliver To"
+                               />
+                    </group>
+
+                    <group string="Shipping Information">
+                        <label for="partner_id" string="Shipping Address"/>
+                        <div class="o_address_format">
+                            <field name="partner_id"
+                                   context="{'show_address': 1}"
+                                   options='{"always_reload": True}'
+                                   nolabel="1"/>
+                        </div>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_zafar_picking" model="ir.actions.report">
+        <field name="name">Picking List</field>
+        <field name="model">stock.picking</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">reports_module.report_zafar_picking_template</field>
+        <field name="report_file">reports_module.report_zafar_picking_template</field>
+        <field name="print_report_name">'Picking List - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>

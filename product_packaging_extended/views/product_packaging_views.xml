@@ -1,0 +1,39 @@
+<odoo>
+    <record id="product_packaging_tree_view_extended" model="ir.ui.view">
+        <field name="name">product.packaging.tree.extended</field>
+        <field name="model">product.packaging</field>
+        <field name="inherit_id" ref="product.product_packaging_tree_view"/>
+        <field name="arch" type="xml">
+        <!--  Insert Sales Packaging column after the last standard column  -->
+            <xpath expr="//list" position="inside">
+            <field name="is_sales_package" string="Sales Pkg" widget="boolean_toggle" optional="show" column_invisible="False"/>
+            <field name="is_purchase_package" string="Purchase Pkg" widget="boolean_toggle" optional="show" column_invisible="False"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="product_packaging_form_view_extended" model="ir.ui.view">
+        <field name="name">product.packaging.form.extended</field>
+        <field name="model">product.packaging</field>
+        <field name="inherit_id" ref="product.product_packaging_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/sheet" position="inside">
+                <group string="Order Type Designation" col="2">
+                <group>
+                <field name="is_sales_package" widget="boolean_toggle"/>
+                </group>
+                <group>
+                <field name="is_purchase_package" widget="boolean_toggle"/>
+                </group>
+                <div colspan="2" class="alert alert-info" role="alert" invisible="not is_sales_package and not is_purchase_package">
+                <i class="fa fa-info-circle me-1"/>
+                Only
+                <strong>one</strong>
+                packaging per product can be set as Sales Packaging and only
+                <strong>one</strong>
+                as Purchase Packaging. Enabling either flag here will automatically clear the flag on any other packaging for the same product.
+                </div>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

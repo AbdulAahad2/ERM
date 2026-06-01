@@ -1,0 +1,28 @@
+<odoo>
+    <record id="purchase_order_form_packaging_qty" model="ir.ui.view">
+        <field name="name">purchase.order.form.packaging.qty</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <!-- Add Packaging Qty column next to the existing Packaging column -->
+            <xpath expr="//field[@name='order_line']/list//field[@name='product_packaging_qty']" position="after">
+                <field name="x_packaging_qty"
+                       string="Pkg Count"
+                       optional="show"
+                       digits="[16,2]"
+                       attrs="{'invisible': [('product_packaging_id', '=', False)]}"/>
+            </xpath>
+
+            <!-- Hint below the order lines -->
+            <xpath expr="//field[@name='order_line']" position="after">
+                <div class="text-muted small mt-1 ms-2">
+                    <i class="fa fa-lightbulb-o me-1"/>
+                    Selecting a
+                    <strong>Purchase Packaging</strong>
+                    automatically sets the ordered quantity to that packaging's quantity.
+                    Edit <strong>Pkg Count</strong> to order multiple packs.
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

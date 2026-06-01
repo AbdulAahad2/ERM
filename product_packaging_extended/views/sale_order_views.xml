@@ -1,0 +1,21 @@
+<odoo>
+    <record id="sale_order_form_packaging_qty" model="ir.ui.view">
+        <field name="name">sale.order.form.packaging.qty</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='order_line']/list//field[@name='product_packaging_qty']" position="after">
+                <field name="x_packaging_qty"
+                       string="Ordered Pkgs"
+                       optional="show"
+                       invisible="not product_packaging_id"/>
+
+                <field name="x_delivered_packaging_qty"
+                       string="Delivered Pkgs"
+                       optional="show"
+                       readonly="1"
+                       invisible="not product_packaging_id"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

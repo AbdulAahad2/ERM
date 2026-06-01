@@ -73,6 +73,16 @@ class SaleOrderLine(models.Model):
         store=False,
         help='Unit price that customer pays: final_unit_price + sap_tax_amount'
     )
+    sap_pricing_quantity = fields.Float(
+        string='Pricing Qty',
+        digits='Product Unit of Measure',
+        compute='_compute_sap_pricing_quantity',
+        store=True,
+        help=(
+            "Quantity used for pricing. For a selected Sales Packaging this is "
+            "the number of packages; otherwise it is the product quantity."
+        ),
+    )
 
     tax_breakdown_summary = fields.Text(
         string='Tax Breakdown',
@@ -140,7 +150,31 @@ class SaleOrderLine(models.Model):
             else:
                 line.tax_breakdown_summary = False
 
-    @api.depends('product_uom_qty', 'discount', 'price_unit', 'sap_tax_amount')
+    @api.depends(
+        'product_packaging_id', 'product_packaging_id.is_sales_package',
+        'product_packaging_qty', 'product_uom_qty',
+    )
+    def _compute_sap_pricing_quantity(self):
+        for line in self:
+            line.sap_pricing_quantity = line._get_sap_pricing_quantity()
+
+    def _get_sap_pricing_quantity(self):
+        self.ensure_one()
+        if self.product_packaging_id.is_sales_package:
+            return self.x_packaging_qty or self.product_packaging_qty
+        return self.product_uom_qty
+
+    def _prepare_base_line_for_taxes_computation(self, **kwargs):
+        self.ensure_one()
+        if self.product_packaging_id.is_sales_package:
+            kwargs['quantity'] = self._get_sap_pricing_quantity()
+        return super()._prepare_base_line_for_taxes_computation(**kwargs)
+
+    @api.depends(
+        'product_uom_qty', 'discount', 'price_unit', 'sap_tax_amount',
+        'product_packaging_id', 'product_packaging_id.is_sales_package',
+        'product_packaging_qty', 'sap_pricing_quantity',
+    )
     def _compute_amount(self):
         sap_lines = self.filtered(lambda l: l.order_id.use_sap_pricing)
         standard_lines = self - sap_lines
@@ -215,7 +249,8 @@ class SaleOrderLine(models.Model):
 
     @api.depends(
         'mrp_price', 'discount_amount', 'surcharge_amount',
-        'charge_amount', 'final_unit_price', 'tax_base_amount', 'sap_tax_amount', 'product_uom_qty',
+        'charge_amount', 'final_unit_price', 'tax_base_amount', 'sap_tax_amount',
+        'product_uom_qty', 'sap_pricing_quantity',
         'pricing_breakdown_line_ids.line_type', 'pricing_breakdown_line_ids.computed_amount',
         'pricing_breakdown_line_ids.name', 'pricing_breakdown_line_ids.applied_value',
         'pricing_breakdown_line_ids.step', 'pricing_breakdown_line_ids.tax_amount',
@@ -236,11 +271,13 @@ class SaleOrderLine(models.Model):
                 line.pricing_breakdown = False
                 continue
 
+            pricing_qty = line._get_sap_pricing_quantity()
             breakdown = (
                 f"{'=' * 70}\n"
                 f"SAP PRICING BREAKDOWN\n"
                 f"{'=' * 70}\n\n"
-                f"Quantity:                      {line.product_uom_qty:>12,.0f}\n"
+                f"Product Quantity:              {line.product_uom_qty:>12,.0f}\n"
+                f"Pricing Quantity:              {pricing_qty:>12,.0f}\n"
                 f"{'─' * 70}\n\n"
             )
 
@@ -300,14 +337,14 @@ class SaleOrderLine(models.Model):
             breakdown += f"{'=' * 70}\n"
             breakdown += f"Unit Price (incl. Tax):      {unit_price_with_tax:>12,.4f}\n"
 
-            if line.product_uom_qty > 1:
+            if pricing_qty > 1:
                 breakdown += f"{'─' * 70}\n"
-                breakdown += f"EXTENDED AMOUNTS (Qty = {line.product_uom_qty}):\n"
+                breakdown += f"EXTENDED AMOUNTS (Pricing Qty = {pricing_qty}):\n"
                 breakdown += f"{'─' * 70}\n"
-                breakdown += f"Extended Net Amount:        {net_unit_price * line.product_uom_qty:>12,.4f}\n"
-                breakdown += f"Extended Tax Amount:        {line.sap_tax_amount * line.product_uom_qty:>12,.4f}\n"
+                breakdown += f"Extended Net Amount:        {net_unit_price * pricing_qty:>12,.4f}\n"
+                breakdown += f"Extended Tax Amount:        {line.sap_tax_amount * pricing_qty:>12,.4f}\n"
                 breakdown += f"{'=' * 70}\n"
-                breakdown += f"Extended Total (incl. Tax): {unit_price_with_tax * line.product_uom_qty:>12,.4f}\n"
+                breakdown += f"Extended Total (incl. Tax): {unit_price_with_tax * pricing_qty:>12,.4f}\n"
 
             breakdown += f"{'=' * 70}\n"
 
@@ -326,8 +363,7 @@ class SaleOrderLine(models.Model):
         """
         self.ensure_one()
 
-        if not self.pricing_schema_id and self.order_id.pricing_schema_id:
-            self.pricing_schema_id = self.order_id.pricing_schema_id
+
 
         if not self.pricing_schema_id or not self.mrp_price:
             _logger.warning("[SAP Pricing] Skipping line %s: Missing schema or MRP", self.id)
@@ -392,11 +428,22 @@ class SaleOrderLine(models.Model):
             else:
                 tax_input_base = current_price
 
+            partner = self.order_id.partner_id
+            override_value = None
+            if partner:
+                if rule.condition_type == 'MWST':
+                    override_value = partner.sap_sales_tax_rate
+                elif rule.condition_type == 'JEXT':
+                    override_value = partner.sap_additional_tax_rate
+                elif rule.condition_type == 'KF00':
+                    override_value = partner.sap_freight_tax_rate
+
             result = rule.apply_rule(
                 tax_input_base,
-                quantity=self.product_uom_qty,
+                quantity=self._get_sap_pricing_quantity(),
                 step_values=step_values,
                 step_amounts=step_amounts,
+                override_value=override_value,
             )
 
             amount = result.get('amount', 0.0)
@@ -528,7 +575,10 @@ class SaleOrderLine(models.Model):
                 'line_type': rule.line_type,
                 'rule_type': rule.rule_type,
                 'base_amount': price_before,
-                'applied_value': rule.tax_id.amount if rule.line_type == 'tax' and rule.tax_id else rule.value,
+                'applied_value': (
+                    rule.tax_id.amount if rule.line_type == 'tax' and rule.tax_id
+                    else (override_value if override_value is not None else rule.value)
+                ),
                 'computed_amount': display_computed,
                 'running_price': display_running_total,  # ← Now correct!
                 'tax_base': tax_base if rule.line_type == 'tax' else 0.0,
@@ -539,13 +589,22 @@ class SaleOrderLine(models.Model):
                 'is_statistical': rule.is_statistical,
             })
 
-        # Store price_unit as TAX-INCLUSIVE, sap_tax_amount as PER UNIT
-        vals = {
-            'price_unit': current_price + total_tax_amount,
-            'discount_amount': total_discount,
-            'surcharge_amount': total_surcharge,
-            'charge_amount': total_charge,
-            'sap_tax_amount': total_tax_amount,
+            # Use the Grand Total subtotal row as price_unit if one exists.
+            # That row's computed_amount is the final customer-payable price
+            # (net + all taxes), which is what should appear as the unit price.
+            grand_total_price = None
+            for bv in breakdown_vals:
+                if (bv.get('line_type') == 'subtotal'
+                        and 'grand total' in (bv.get('name') or '').lower()):
+                    grand_total_price = bv.get('computed_amount')
+
+            vals = {
+                'price_unit': grand_total_price if grand_total_price is not None
+                else current_price + total_tax_amount,
+                'discount_amount': total_discount,
+                'surcharge_amount': total_surcharge,
+                'charge_amount': total_charge,
+                'sap_tax_amount': total_tax_amount,
         }
 
         if collected_tax_ids:
@@ -593,21 +652,24 @@ class SaleOrderLine(models.Model):
             if mrp and isinstance(self.id, int):
                 self.write({'mrp_price': mrp})
 
-        if not self.pricing_schema_id and self.order_id.pricing_schema_id:
+        # Always look up a schema that matches BOTH this customer AND this product.
+        # The header schema (set without a known product) is only used as a
+        # fallback — a product-specific match always takes priority.
+        schema = self.env['pricing.schema'].get_matching_schema(
+            self.order_id.partner_id.id,
+            self.product_id.id,
+            template_code=(
+                self.order_id.pricing_schema_id.code
+                if self.order_id.pricing_schema_id else None
+            ),
+            order_date=self.order_id._get_effective_pricing_date(),
+        )
+        if schema:
+            self.pricing_schema_id = schema
+        elif self.order_id.pricing_schema_id:
+            # No product-specific schema found; fall back to the order header schema
+            # (which is always a catch-all schema with no product restriction).
             self.pricing_schema_id = self.order_id.pricing_schema_id
-
-        if not self.pricing_schema_id:
-            schema = self.env['pricing.schema'].get_matching_schema(
-                self.order_id.partner_id.id,
-                self.product_id.id,
-                template_code=(
-                    self.order_id.pricing_schema_id.code
-                    if self.order_id.pricing_schema_id else None
-                ),
-                order_date=self.order_id.date_order,
-            )
-            if schema:
-                self.pricing_schema_id = schema
 
         if self.pricing_schema_id and self.mrp_price:
             self._apply_pricing_schema(save_breakdown=False)
@@ -618,8 +680,7 @@ class SaleOrderLine(models.Model):
         order = self.order_id
         if not (order.use_sap_pricing and order.pricing_schema_id):
             return
-        if not self.pricing_schema_id:
-            self.pricing_schema_id = order.pricing_schema_id
+
         if not self.mrp_price and self.product_id:
             self.mrp_price = self.product_id.mrp_price or self.product_id.lst_price
         self._apply_pricing_schema(save_breakdown=False)
@@ -627,8 +688,6 @@ class SaleOrderLine(models.Model):
     def action_show_pricing_breakdown(self):
         self.ensure_one()
 
-        if not self.pricing_schema_id and self.order_id.pricing_schema_id:
-            self.pricing_schema_id = self.order_id.pricing_schema_id
 
         if not self.pricing_schema_id:
             raise UserError(_("No pricing schema is applied to this line."))
@@ -694,7 +753,7 @@ class SaleOrderLine(models.Model):
                         order.partner_id.id,
                         line.product_id.id if line.product_id else False,
                         order_date=order._get_effective_pricing_date(),
-                        header_only=True,
+                        header_only=False,  # line-level: enforce partner AND product match
                     )
                 if schema:
                     line.write({'pricing_schema_id': schema.id})
@@ -753,5 +812,9 @@ class SaleOrderLine(models.Model):
                 'discount_amount': self.discount_amount,
                 'charge_amount': self.charge_amount,
                 'tax_base_amount': self.tax_base_amount,
+                'sap_pricing_quantity': (
+                    self.x_packaging_qty or self.product_packaging_qty
+                    if self.product_packaging_id.is_sales_package else res.get('quantity', 0.0)
+                ),
             })
         return res

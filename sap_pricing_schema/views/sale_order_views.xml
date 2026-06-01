@@ -86,21 +86,39 @@
         <field name="priority">99</field>
         <field name="arch" type="xml">
 
+            <xpath expr="//div[@class='o_td_label' and @groups='base.group_no_one' and label[@for='date_order']]" position="attributes">
+                <attribute name="groups"/>
+            </xpath>
+
+            <xpath expr="//field[@name='date_order' and @groups='base.group_no_one']" position="attributes">
+                <attribute name="groups"/>
+            </xpath>
+
             <xpath expr="//label[@for='date_order']" position="attributes">
-                <attribute name="string">Schema Date</attribute>
+                <attribute name="string">Order Date</attribute>
             </xpath>
 
             <!-- 2. Target the field directly to override the "Order Date" label used in later states -->
             <xpath expr="//field[@name='date_order']" position="attributes">
-                <attribute name="string">Schema Date</attribute>
+                <attribute name="string">Order Date</attribute>
             </xpath>
             <!-- SAP Pricing toggle + schema selector above the standard header -->
             <xpath expr="//sheet//group[@name='sale_header']" position="before">
                 <group string="Odoo Pricing" name="sap_pricing_header">
                     <field name="use_sap_pricing" widget="boolean_toggle" string="Odoo Pricing"/>
+                    <!-- Invisible: exposes effective_pricing_date to the domain engine -->
+                    <field name="effective_pricing_date" invisible="1"/>
+                    <field name ="pricing_date"/>
                     <field name="pricing_schema_id"
                            invisible="not use_sap_pricing"
+                           domain="[
+                               ('is_template', '=', False),
+                               ('active', '=', True),
+                               '|', ('match_all_customers', '=', True), ('customer_ids', 'in', [partner_id] if partner_id else []),
+                               '|', ('date_from', '=', False), ('date_from', '&lt;=', effective_pricing_date),
+                           ]"
                            />
+
                 </group>
             </xpath>
 

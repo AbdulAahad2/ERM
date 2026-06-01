@@ -38,7 +38,7 @@ class PricingGLMapping(models.Model):
         ('K020', 'K020 – Price Group Discount'),
         ('HA00', 'HA00 – Order-Value Discount (%)'),
         ('HB00', 'HB00 – Order-Value Discount (Abs)'),
-        ('KF00', 'KF00 – Freight'),
+        ('KF00', 'KF00 – Additional Tax'),
         ('HD00', 'HD00 – Delivery Surcharge'),
         ('SUB1', 'Subtotal 1 – Net Value Before Tax'),
         ('SUB2', 'Subtotal 2 – Custom Subtotal'),

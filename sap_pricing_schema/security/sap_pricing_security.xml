@@ -14,9 +14,9 @@
 
     <!-- ══════════════════════════════════════════════════════════════════
          Groups
-         IMPORTANT: group_sap_pricing_admin does NOT imply group_sap_pricing_user.
-         They are mutually exclusive tiers under the same category.
-         Odoo's exclusive category enforces that a user is in at most one.
+         Administrator implies User, which is the standard Odoo access-rights
+         pattern for a higher role. Views that must be user-only explicitly
+         exclude the admin group with !group_sap_pricing_admin.
     ══════════════════════════════════════════════════════════════════ -->
     <record id="group_sap_pricing_user" model="res.groups">
         <field name="name">User</field>
@@ -27,7 +27,7 @@
     <record id="group_sap_pricing_admin" model="res.groups">
         <field name="name">Administrator</field>
         <field name="category_id" ref="module_category_sap_pricing"/>
-        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        <field name="implied_ids" eval="[(4, ref('group_sap_pricing_user'))]"/>
         <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
     </record>
 

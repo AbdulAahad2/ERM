@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <record id="view_users_form_sap_pricing_access" model="ir.ui.view">
+        <field name="name">res.users.form.sap.pricing.access</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/header" position="inside">
+                <button name="action_make_sap_pricing_admin"
+                        string="Make Pricing Admin"
+                        type="object"
+                        class="btn-primary"
+                        groups="sap_pricing_schema.group_sap_pricing_admin,base.group_system"
+                        invisible="is_sap_pricing_admin"/>
+                <button name="action_make_sap_pricing_user"
+                        string="Make Pricing User"
+                        type="object"
+                        class="btn-secondary"
+                        groups="sap_pricing_schema.group_sap_pricing_admin,base.group_system"
+                        invisible="is_sap_pricing_user and not is_sap_pricing_admin"/>
+                <button name="action_remove_sap_pricing_access"
+                        string="Remove Pricing Access"
+                        type="object"
+                        class="btn-secondary"
+                        groups="sap_pricing_schema.group_sap_pricing_admin,base.group_system"
+                        invisible="not is_sap_pricing_user and not is_sap_pricing_admin"/>
+            </xpath>
+
+            <xpath expr="//notebook" position="inside">
+                <page string="Odoo Pricing" name="sap_pricing_access">
+                    <group>
+                        <field name="is_sap_pricing_user" readonly="1"/>
+                        <field name="is_sap_pricing_admin" readonly="1"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_users_tree_sap_pricing_access" model="ir.ui.view">
+        <field name="name">res.users.list.sap.pricing.access</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='login']" position="after">
+                <field name="is_sap_pricing_user" optional="show"/>
+                <field name="is_sap_pricing_admin" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

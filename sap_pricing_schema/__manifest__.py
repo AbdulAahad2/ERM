@@ -35,6 +35,7 @@ Features:
         'sale',
         'account',
         'product',
+        'product_packaging_extended',
     ],
     'data': [
         'security/sap_pricing_security.xml',
@@ -50,6 +51,8 @@ Features:
         'views/menu_items.xml',
 
         'views/res_config_settings_views.xml',
+        'views/res_partner_views.xml',
+        'views/res_users_views.xml',
 
         # 3. Static Data
         'data/demo_data.xml',

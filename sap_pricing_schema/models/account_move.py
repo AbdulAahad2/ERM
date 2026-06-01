@@ -19,11 +19,15 @@ class AccountMove(models.Model):
         store=True,
     )
 
-    @api.depends('invoice_line_ids.sap_tax_amount')
+    @api.depends(
+        'invoice_line_ids.sap_tax_amount',
+        'invoice_line_ids.sap_pricing_quantity',
+        'invoice_line_ids.quantity',
+    )
     def _compute_sap_totals(self):
         for move in self:
             move.sap_tax_total = sum(
-                line.sap_tax_amount * line.quantity
+                line.sap_tax_amount * line._get_sap_pricing_quantity()
                 for line in move.invoice_line_ids
             )
 
@@ -90,21 +94,30 @@ class AccountMove(models.Model):
             _logger.info("Line %s: Found %s breakdown rows", inv_line.id, len(breakdown_lines))
 
             best_base_price = 0.0
-            found_specific_base = False
+            found_pr00 = False
+            found_any_base = False
 
             for b in breakdown_lines:
-                raw_amt = abs(b.computed_amount) * inv_line.quantity
-                b_name = (b.name or '').strip().lower()
+                raw_amt = abs(b.computed_amount) * inv_line._get_sap_pricing_quantity()
+                b_ctype = (b.condition_type or '').strip().upper()
 
-                if b.rule_type == 'base_price':
-                    if 'base price' in b_name or '100pr00' in b_name:
-                        best_base_price = raw_amt
-                        found_specific_base = True
-                        _logger.info("Line %s: Found Primary Base Price: %s", inv_line.id, raw_amt)
+                # ── Priority 1: Explicit PR00 condition type ─────────────────
+                if b.rule_type == 'base_price' and b_ctype == 'PR00':
+                    best_base_price = raw_amt
+                    found_pr00 = True
+                    _logger.info(
+                        "Line %s: Found PR00 Base Price row '%s': %s",
+                        inv_line.id, b.name, raw_amt,
+                    )
 
-                    elif 'mrp' in b_name and not found_specific_base:
-                        best_base_price = raw_amt
-                        _logger.info("Line %s: Using MRP as fallback: %s", inv_line.id, raw_amt)
+                # ── Priority 2: Any other base_price row (e.g. ZXXX/MRP) ─────
+                elif b.rule_type == 'base_price' and not found_pr00 and not found_any_base:
+                    best_base_price = raw_amt
+                    found_any_base = True
+                    _logger.info(
+                        "Line %s: Found fallback Base Price row '%s' (CType=%s): %s",
+                        inv_line.id, b.name, b_ctype, raw_amt,
+                    )
 
                 elif b.line_type == 'tax' and b.gl_account_id:
                     cond_type = b.condition_type or 'tax_other'
@@ -139,7 +152,7 @@ class AccountMove(models.Model):
             base_amt = base_price_by_inv_line.get(inv_line.id)
 
             if base_amt is not None:
-                qty = inv_line.quantity or 1.0
+                qty = inv_line._get_sap_pricing_quantity() or 1.0
                 computed_unit_price = base_amt / qty
 
                 _logger.info(
@@ -218,6 +231,15 @@ class AccountMove(models.Model):
             check_move_validity=False, skip_invoice_line_sync=True
         ).write({'line_ids': new_line_vals})
 
+    def _prepare_product_base_line_for_taxes_computation(self, product_line):
+        res = super()._prepare_product_base_line_for_taxes_computation(product_line)
+        if (
+                self.is_invoice(include_receipts=True)
+                and product_line.sale_line_ids[:1].product_packaging_id.is_sales_package
+        ):
+            res['quantity'] = product_line._get_sap_pricing_quantity()
+        return res
+
 
 class AccountMoveLine(models.Model):
     _inherit = 'account.move.line'
@@ -233,3 +255,19 @@ class AccountMoveLine(models.Model):
         digits='Product Price',
         help='Unit tax amount (per unit, not extended by qty)',
     )
+    sap_pricing_quantity = fields.Float(
+        string='Pricing Qty',
+        digits='Product Unit of Measure',
+        help='Quantity used for package-based SAP pricing.',
+    )
+
+    def _get_sap_pricing_quantity(self):
+        self.ensure_one()
+        return self.sap_pricing_quantity or self.quantity
+
+    @api.depends(
+        'quantity', 'discount', 'price_unit', 'tax_ids', 'currency_id',
+        'sap_pricing_quantity',
+    )
+    def _compute_totals(self):
+        return super()._compute_totals()

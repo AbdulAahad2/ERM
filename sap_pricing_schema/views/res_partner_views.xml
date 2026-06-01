@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <record id="view_partner_form_sap_pricing" model="ir.ui.view">
+        <field name="name">res.partner.form.sap.pricing</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//notebook" position="inside">
+                <page string="Odoo Pricing Tax" name="sap_pricing_taxes">
+                    <group>
+                        <group string="Tax Configuration">
+                            <field name="sap_sales_tax_rate"
+                                   string="Sales Tax (%)"
+                                   widget="float"
+                                   digits="[16, 2]"/>
+                            <field name="sap_additional_tax_rate"
+                                   string="Income Tax (%)"
+                                   widget="float"
+                                   digits="[16, 2]"/>
+                            <field name="sap_freight_tax_rate"
+                                   string="Additional Tax (%)"
+                                   widget="float"
+                                   digits="[16, 2]"/>
+                        </group>
+                    </group>
+                    <p class="text-muted" style="margin-top:8px;">
+                        Enter the percentage rate directly (e.g. <b>15</b> for 15%, <b>0.1</b> for 0.1%).
+                        Saving will automatically update the MWST (Sales Tax), JEXT (Income Tax),
+                        and KF00 (Additional Tax) rules in all pricing schemas assigned to this customer.
+                    </p>
+                </page>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

@@ -7,6 +7,8 @@
         <field name="code">STD_DISC</field>
         <field name="sequence">10</field>
         <field name="priority">5</field>
+        <field name="date_from">2026-03-01</field>
+        <field name="date_to">2026-03-31</field>
         <field name="match_all_customers">True</field>
         <field name="match_all_products">True</field>
     </record>
@@ -77,6 +79,8 @@
         <field name="code">VIP_PRICE</field>
         <field name="sequence">5</field>
         <field name="priority">10</field>
+        <field name="date_from">2026-04-01</field>
+        <field name="date_to">2026-04-30</field>
         <field name="match_all_customers">False</field>
         <field name="match_all_products">True</field>
     </record>

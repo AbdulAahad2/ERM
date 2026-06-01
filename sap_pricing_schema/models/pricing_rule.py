@@ -42,7 +42,7 @@ class PricingRule(models.Model):
         ('K020', 'K020 – Price Group Discount'),
         ('HA00', 'HA00 – Order-Value Discount (%)'),
         ('HB00', 'HB00 – Order-Value Discount (Abs)'),
-        ('KF00', 'KF00 – Freight'),
+        ('KF00', 'KF00 – Additional Tax'),
         ('HD00', 'HD00 – Delivery Surcharge'),
         ('SUB1', 'Subtotal 1 – Net Value Before Tax'),
         ('SUB2', 'Subtotal 2 – Custom Subtotal'),
@@ -126,31 +126,41 @@ class PricingRule(models.Model):
     # ── ORM overrides ─────────────────────────────────────────────────────────
 
     def write(self, vals):
+        if self.env.user.has_group('sap_pricing_schema.group_sap_pricing_admin'):
+            return super().write(vals)
+
         if self._is_user_only() and not self.env.context.get('pricing_schema_init'):
             vals = {k: v for k, v in vals.items() if k not in self._ADMIN_ONLY_FIELDS}
             if not vals:
                 return True
+
         return super().write(vals)
 
     @api.model_create_multi
     def create(self, vals_list):
+        if self.env.user.has_group('sap_pricing_schema.group_sap_pricing_admin'):
+            return super().create(vals_list)
+
+        if self._is_user_only() and not self.env.context.get('pricing_schema_init'):
+            raise UserError(_('Only Odoo Pricing Administrators can create pricing steps.'))
 
         return super().create(vals_list)
 
     def unlink(self):
-        """Non-admin users cannot delete pricing rule rows."""
-        if self._is_user_only():
-            raise UserError(_(
-                'Only SAP Pricing Administrators can delete pricing steps.'
-            ))
-        return super().unlink()
+        if self.env.user.has_group('sap_pricing_schema.group_sap_pricing_admin'):
+            return super().unlink()
 
+        raise UserError(_('Only Odoo Pricing Administrators can delete pricing steps.'))
     # ── Business logic ────────────────────────────────────────────────────────
 
-    def apply_rule(self, current_price, quantity=1.0, step_values=None, step_amounts=None):
+    def apply_rule(self, current_price, quantity=1.0, step_values=None, step_amounts=None,
+                   override_value=None):  # ✅ added override_value
         self.ensure_one()
         step_values = step_values or {}
         step_amounts = step_amounts or {}
+
+        # ✅ Use partner's dynamic rate if provided, else fall back to stored rule value
+        effective_value = override_value if override_value is not None else self.value
 
         if self.min_quantity > 0 and quantity < self.min_quantity:
             return {'amount': 0.0, 'new_price': current_price, 'tax_ids': [], 'tax_amount': 0.0, 'tax_base': 0.0}
@@ -167,19 +177,20 @@ class PricingRule(models.Model):
                 tax_results = self.tax_id.compute_all(base, currency=self.company_id.currency_id, quantity=quantity)
                 tax_amount = sum(t.get('amount', 0.0) for t in tax_results.get('taxes', []))
                 tax_ids = [self.tax_id.id]
-            elif self.value > 0:
-                tax_amount = base * (self.value / 100.0)
-            return {'amount': tax_amount, 'new_price': current_price, 'tax_ids': tax_ids, 'tax_amount': tax_amount,
-                    'tax_base': base}
+            elif effective_value > 0:  # ✅ was self.value
+                tax_amount = base * (effective_value / 100.0)  # ✅ was self.value
+            return {'amount': tax_amount, 'new_price': current_price, 'tax_ids': tax_ids,
+                    'tax_amount': tax_amount, 'tax_base': base}
 
         if self.rule_type == 'base_price':
-            if self.calculation_type == 'fixed' and self.value > 1.0:
-                new_price = self.value
+            if self.calculation_type == 'fixed' and effective_value > 1.0:  # ✅ was self.value
+                new_price = effective_value  # ✅ was self.value
             else:
                 new_price = current_price
             return {'amount': new_price, 'new_price': new_price, 'tax_ids': [], 'tax_amount': 0.0, 'tax_base': 0.0}
 
-        amount = base * (self.value / 100.0) if self.calculation_type == 'percentage' else self.value
+        # ✅ All uses of self.value replaced with effective_value
+        amount = base * (effective_value / 100.0) if self.calculation_type == 'percentage' else effective_value
         if self.rule_type == 'discount':
             new_price = max(0.0, current_price - amount)
             amount = current_price if new_price == 0.0 and amount > current_price else amount
@@ -191,6 +202,10 @@ class PricingRule(models.Model):
     def _resolve_base(self, current_price, step_values, step_amounts=None):
         step_amounts = step_amounts or {}
         if self.from_step > 0 and self.to_step > 0:
+            if self.from_step == self.to_step:
+                # Single-step reference (e.g. MWST/JEXT both pointing at step 700):
+                # use the running price AT that step, not the amount delta computed there.
+                return step_values.get(self.from_step, current_price)
             return sum(step_amounts.get(s, 0.0) for s in range(self.from_step, self.to_step + 1))
         if self.from_step > 0:
             return step_values.get(self.from_step, current_price)

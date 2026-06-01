@@ -147,6 +147,13 @@ class ProductTemplate(models.Model):
         """
         Add safety_stock to ``raw_qty`` when ``forecasted_on_hand`` <= 0.
 
+        This field is intended for standalone reorder rules (min/max),
+        NOT for MPS-driven BOM component ordering.  The MPS already handles
+        FG-level buffering via the Safety Stock Target on the schedule form.
+
+        For MPS component PRs, safety stock is intentionally skipped — only
+        MOQ rounding is applied (see _mps_create_draft_mo_with_component_prs).
+
         Args:
             raw_qty (float):             Procurement qty before safety stock.
             forecasted_on_hand (float):  Expected on-hand for the period.

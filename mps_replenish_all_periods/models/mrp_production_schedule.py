@@ -7,128 +7,86 @@
 # Extend mrp.production.schedule to replenish ALL visible forecast periods
 # when the user presses "Order Once" / "Replenish" in the MPS screen.
 #
-# PR INTEGRATION
+# RFQ INTEGRATION
+# ---------------
+# All procurements produce Request for Quotation (purchase.order in state
+# 'draft') records instead of confirmed POs or Purchase Requisitions.
+#
+# ROUTING LOGIC
+# -------------
+#   BUY ROUTE (product has Buy route / no Manufacture route):
+#       → Create an RFQ directly for the finished good.
+#         Vendor is resolved from product.seller_ids.
+#         RFQ date_order = period date_start − (vendor lead time + security lead).
+#
+#   MANUFACTURE ROUTE (product has Manufacture route on schedule, product,
+#     or product category):
+#       → Explode the Bill of Materials.
+#         For each BOM component that does NOT have its own MPS schedule:
+#           • Resolve vendor from component.seller_ids.
+#           • Compute order date = date_start − component lead time.
+#           • Create / append to an RFQ grouped by vendor.
+#         No draft MO is created here; the planner creates MOs manually.
+#
+# LEAD TIME CALCULATION
+# ---------------------
+# For each product the "order date" (date_order on the RFQ) is:
+#
+#   order_date = date_needed
+#              − vendor_lead_time   (seller_ids[0].delay, or product.purchase_delay)
+#              − security_lead      (company.po_lead)
+#              − days_to_purchase   (product.days_to_purchase, if set)
+#
+# If the computed order_date is in the past, today's date is used instead.
+# date_planned on each order line is always the original date_needed.
+#
+# STOCK COVERAGE
 # --------------
-# Instead of creating Purchase Orders (RFQs) directly, all "Buy" procurements
-# are intercepted and turned into Purchase Requisitions (purchase.approval).
-# The requester_id on the PR is always the user who pressed Replenish.
-# Manufacture / sub-MO procurements still go through the normal engine.
+# On-hand stock and confirmed incoming PO quantities are deducted before
+# creating RFQ lines.  A running balance is maintained across periods
+# (earliest first) so on-hand is never double-counted.
+# Open Manufacturing Orders are also considered for buy-route FG products.
 #
-# PRs are grouped by (company, warehouse, department).  The department is
-# taken from the department_id field added to mrp.production.schedule.
-# If no department is set on the schedule, the warehouse's default department
-# is used.  If neither is set, a UserError is raised.
+# SURPLUS CARRY-FORWARD
+# ---------------------
+# When MOQ rounding causes an order to exceed the period's net need, the
+# surplus is carried into the next period's available balance so subsequent
+# periods do not over-order.  Safety stock protection ensures the safety
+# buffer is not consumed by the carry-forward.
 #
-# BOM-DRIVEN REPLENISHMENT — DESIGN INTENT
-# -----------------------------------------
-# Every time the user presses "Order" in MPS the custom logic runs regardless
-# of replenish_trigger.  Routing is determined solely by the product's BOM
-# type and stock routes:
+# RFQ GROUPING
+# ------------
+# Lines are grouped by (vendor, company, warehouse, year, month).
+# One RFQ per group; multiple lines inside one RFQ if the same vendor
+# supplies multiple products / components in the same period.
+# Lines for the SAME product + date_planned within a group are MERGED
+# (quantities summed) so each product appears only once per RFQ.
 #
-#   Has manufacture BOM  +  NO Manufacture route  →  explode BOM, create
-#     component PRs instead of a PR for the finished good.  This handles
-#     products that are built internally but whose raw materials are bought.
+# DUPLICATE DETECTION
+# -------------------
+# An existing draft/sent RFQ line for the same product + quantity in the
+# same year-month raises a UserError listing all conflicts so the planner
+# can review before re-running.
 #
-#   Has manufacture BOM  +  Manufacture route     →  normal MO path via the
-#     procurement engine (unchanged from Odoo standard).
-#
-#   Has phantom/kit BOM                           →  explode into components,
-#     create PRs for unscheduled components.
-#
-#   No BOM                                        →  direct PR for the product
-#     itself (standard Buy replenishment).
-#
-# replenish_trigger='never' is no longer required; users do not need to
-# configure the trigger field to get component-level PRs.
-#
-# BUGS FIXED
-# ----------
-# BUG 1 — replenish_trigger='never' silently dropped the whole schedule
-# BUG 2 — replenish_qty read from stored records (always returns 0)
-# BUG 3 — date key type mismatch (ISO string vs Python date object)
-# BUG 4 — on-hand stock and confirmed POs not deducted before creating PRs
-# BUG 5 — open MOs not included in available supply when computing net need
-# BUG 6 — surplus from MOQ/safety-stock rounding not carried to next month
-# BUG 7 — surplus carry-forward consumed safety stock (protected inventory)
-# BUG 8 — component on-hand/PO coverage was applied AFTER the surplus carry
-#          pass, so the carry-forward surplus was calculated against inflated
-#          raw_qty that hadn't had existing stock deducted yet.
-#          Fixed: a dedicated pre-pass applies on-hand/PO deduction to every
-#          component accumulator entry (using a running balance across months,
-#          earliest first) BEFORE the surplus carry runs.  The correct pipeline
-#          is now:
-#            raw_qty (exploded)
-#              → minus on_hand + confirmed POs   [pre-coverage pass]
-#              → minus usable surplus (surplus − safety_stock)  [surplus carry]
-#              → plus safety_stock + round to MOQ  [procurement creation]
-#
-# STOCK COVERAGE LOGIC
-# --------------------
-# Before creating any procurement, action_replenish now independently queries:
-#   1. Unreserved on-hand stock at the warehouse's stock location
-#   2. Confirmed PO lines (state='purchase') not yet received, keyed by month
-#   3. Open Manufacturing Orders (confirmed/progress), keyed by month
-#
-# A per-schedule *running available balance* is maintained across periods
-# (sorted ascending by date_start) so that on-hand stock is consumed by the
-# earliest period first, and incoming supply (POs / MOs) is added to the
-# balance in the period it is expected to arrive.
-#
-# net_required = max(0, outstanding_qty − available_balance_for_period)
-#
-# If net_required == 0 the period is marked launched but no procurement is
-# created, preventing duplicate PRs for already-covered demand.
-#
-# SURPLUS CARRY-FORWARD WITH SAFETY-STOCK PROTECTION (BUG 6 + BUG 7 FIX)
-# -------------------------------------------------------------------------
-# After the accumulator is fully populated (all periods / all schedules
-# processed), a second pass groups accumulator entries by
-# (product_id, company_id, warehouse_id) and sorts them ascending by month.
-#
-# A running surplus starts at 0 and is updated each month.  Critically,
-# safety stock is treated as PROTECTED inventory — it cannot be consumed
-# by future demand.  Only the portion of surplus ABOVE safety stock is
-# usable as carry-forward:
-#
-#   safety_stock    = product.template._get_safety_stock()
-#   usable_surplus  = max(0, surplus − safety_stock)
-#   net_need        = max(0, raw_qty − usable_surplus)
-#   ordered_qty     = _mps_adjust_procurement_qty(net_need)   # MOQ / safety
-#   surplus         = ordered_qty − net_need                  # carry forward
-#
-# If net_need == 0 the month is skipped (period marked launched, no PR).
-# The accumulator entry's raw_qty is replaced with net_need so the later
-# MOQ loop still applies the rules correctly on the reduced base.
-#
-# NOTE: MPS's own incoming_qty (from get_production_schedule_view_state)
-# reflects stock moves already in Odoo's picking system.  Draft / sent POs
-# do NOT create moves yet, so MPS silently shows 0 incoming for them.
-# The helpers below query purchase.order.line directly, avoiding that gap.
-#
-# DUPLICATE PR PREVENTION
-# -----------------------
-# Before adding a procurement line to a new PR, the code checks whether an
-# existing draft or confirmed PR already contains a line for the same product
-# whose planned date range overlaps the current forecast period.
-# Duplicates are silently skipped; a summary is logged at INFO level.
-#
-# MPS DISPLAY FIX — on-hand always shows 0
-# -----------------------------------------
-# Odoo's get_production_schedule_view_state() computes on-hand via
-# product.qty_available scoped by warehouse context.  This can return 0
-# immediately after a Manufacturing Order completes because the context
-# cache is stale for that session, and also because qty_available only
-# counts stock at the product's internal reference location — it may miss
-# goods in child locations such as WH/Stock sub-zones.
-#
-# Fix: override get_production_schedule_view_state() to post-process every
-# period dict and replace qty_on_hand / forecasted_qty_0 with a fresh read
-# from stock.quant at warehouse.lot_stock_id and all its child locations.
-# This makes the MPS opening-stock cell always reflect the true current
-# on-hand, which also drives the correct replenishment suggestion.
+# BUGS FIXED (carried over from previous version)
+# ------------------------------------------------
+# BUG 1  — replenish_trigger='never' silently dropped the whole schedule
+# BUG 2  — replenish_qty read from stored records (always returns 0)
+# BUG 3  — date key type mismatch (ISO string vs Python date object)
+# BUG 4  — on-hand stock and confirmed POs not deducted before ordering
+# BUG 5  — open MOs not included in available supply for FG coverage
+# BUG 6  — surplus from MOQ rounding not carried to next month
+# BUG 7  — surplus carry consumed safety stock (protected inventory)
+# BUG 8  — component on-hand/PO coverage applied AFTER surplus carry pass
+# BUG 9  — BOM explosion triggered for ALL products with a normal BOM
+# BUG 10 — same component from multiple BOM paths created duplicate RFQ lines
+#           instead of being merged into a single line (quantities now summed)
 # =============================================================================
 
 import logging
+import math
+import calendar
+from collections import defaultdict
 from datetime import date as date_type, datetime, timedelta
 
 from odoo import models, fields, api, _
@@ -149,40 +107,12 @@ class MrpProductionScheduleAllPeriods(models.Model):
         """
         Override to replace MPS's context-scoped qty_available with a direct
         stock.quant read at warehouse.lot_stock_id (including child locations).
-
-        period_scale is passed through to super() unchanged; it controls the
-        time bucket size (day / week / month) used by the MPS grid.
-
-        WHY THIS IS NEEDED
-        ------------------
-        Odoo's core implementation calls product.qty_available inside a
-        warehouse context.  This can return 0 when:
-
-          • A Manufacturing Order was just completed — the context cache is
-            stale and has not yet reflected the new quant written by the MO.
-
-          • The product's "internal reference" location differs from
-            warehouse.lot_stock_id (e.g. sub-locations, transit zones).
-
-        By reading stock.quant directly and summing over child_of the
-        warehouse's main stock location, we always get the true current
-        on-hand regardless of context caching.
-
-        The fix patches every mps_state dict returned by super():
-          • qty_on_hand          — the raw on-hand figure used in calculations
-          • forecasted_qty_0     — the opening cell displayed in the MPS grid
-            (first period only)
-
-        All downstream period calculations (replenish_qty, forecasted_stock,
-        etc.) are recomputed so the corrected on-hand flows through.
         """
-        # Call the standard Odoo implementation first, forwarding period_scale
         if period_scale is not None:
             result = super().get_production_schedule_view_state(period_scale)
         else:
             result = super().get_production_schedule_view_state()
 
-        # Build a fast lookup: schedule_id → mrp.production.schedule record
         schedule_by_id = {rec.id: rec for rec in self}
 
         for mps_state in result:
@@ -195,7 +125,6 @@ class MrpProductionScheduleAllPeriods(models.Model):
             warehouse = schedule.warehouse_id
             location  = warehouse.lot_stock_id if warehouse else False
 
-            # ── Fresh on-hand from stock.quant ────────────────────────────
             if location:
                 quants = self.env['stock.quant'].search([
                     ('product_id',  '=', product.id),
@@ -216,22 +145,14 @@ class MrpProductionScheduleAllPeriods(models.Model):
                 _logger.info(
                     "[MPS Display Fix] %s: Odoo on_hand=%.4f → corrected to %.4f "
                     "(direct stock.quant @ %s + children)",
-                    product.display_name,
-                    odoo_on_hand,
-                    real_on_hand,
+                    product.display_name, odoo_on_hand, real_on_hand,
                     location.complete_name if location else 'N/A',
                 )
 
-            # Patch the top-level on-hand field
             mps_state['qty_on_hand'] = real_on_hand
 
-            # ── Patch forecasted_qty_0 in the first forecast period ───────
-            # forecasted_qty_0 is the opening stock shown in the MPS grid
-            # cell.  It must equal real_on_hand for the first period; Odoo
-            # carries it forward between periods automatically after that.
             forecast_ids = mps_state.get('forecast_ids', [])
             if forecast_ids:
-                # Sort ascending so we patch only the earliest period
                 def _period_sort_key(p):
                     ds = p.get('date_start')
                     if isinstance(ds, str):
@@ -239,254 +160,166 @@ class MrpProductionScheduleAllPeriods(models.Model):
                     return ds or date_type.min
 
                 sorted_periods = sorted(forecast_ids, key=_period_sort_key)
-                first_period = sorted_periods[0]
+                first_period   = sorted_periods[0]
 
                 odoo_fq0 = first_period.get('forecasted_qty_0', 0.0) or 0.0
                 if abs(real_on_hand - odoo_fq0) > 0.001:
                     first_period['forecasted_qty_0'] = real_on_hand
 
-                    # Recompute replenish_qty for the first period so the
-                    # suggested order quantity reflects the corrected on-hand.
-                    # Formula mirrors Odoo's core logic:
-                    #   replenish = max(0, target − (on_hand + incoming − demand))
-                    demand       = first_period.get('forecast_qty',     0.0) or 0.0
-                    incoming     = first_period.get('incoming_qty',     0.0) or 0.0
-                    target       = first_period.get('forecast_target_qty', 0.0) or 0.0
-                    old_replenish = first_period.get('replenish_qty',   0.0) or 0.0
+                    demand        = first_period.get('forecast_qty',       0.0) or 0.0
+                    incoming      = first_period.get('incoming_qty',       0.0) or 0.0
+                    target        = first_period.get('forecast_target_qty',0.0) or 0.0
+                    old_replenish = first_period.get('replenish_qty',      0.0) or 0.0
 
                     new_replenish = max(0.0, target - (real_on_hand + incoming - demand))
                     first_period['replenish_qty'] = new_replenish
 
                     _logger.info(
                         "[MPS Display Fix] %s first period: "
-                        "forecasted_qty_0 %.4f→%.4f  "
-                        "replenish_qty %.4f→%.4f  "
-                        "(demand=%.4f  incoming=%.4f  target=%.4f)",
+                        "forecasted_qty_0 %.4f→%.4f  replenish_qty %.4f→%.4f",
                         product.display_name,
-                        odoo_fq0, real_on_hand,
-                        old_replenish, new_replenish,
-                        demand, incoming, target,
+                        odoo_fq0, real_on_hand, old_replenish, new_replenish,
                     )
 
         return result
 
     # =========================================================================
-    # Helper: apply minimum_order_qty and safety_stock to a procurement qty
+    # Helper: MOQ adjustment (no safety stock applied to BOM components)
     # =========================================================================
 
-    def _mps_adjust_procurement_qty(self, product, raw_qty, forecasted_on_hand=0.0):
-        """
-        Apply the two product-level procurement-qty rules in order:
-
-          1. Safety stock  — add buffer when on-hand <= 0
-          2. Minimum order qty — round up to vendor minimum
-
-        Delegates to product.template._apply_procurement_qty_rules().
-        """
+    def _mps_adjust_procurement_qty(
+        self, product, raw_qty, forecasted_on_hand=0.0, apply_safety=True
+    ):
+        """Apply safety stock and minimum order quantity rules (FG only)."""
         self.ensure_one()
-        tmpl = product.product_tmpl_id
-        adjusted = tmpl._apply_procurement_qty_rules(raw_qty, forecasted_on_hand)
-
+        tmpl     = product.product_tmpl_id
+        adjusted = (
+            tmpl._apply_procurement_qty_rules(raw_qty, forecasted_on_hand)
+            if apply_safety
+            else tmpl._apply_minimum_order_qty(raw_qty)
+        )
         if adjusted != raw_qty:
             _logger.info(
                 "[MPS All-Periods] qty adjusted for %s: %.4f → %.4f "
                 "(safety_stock=%.4f, min_order_qty=%.4f, on_hand=%.4f)",
-                product.display_name,
-                raw_qty,
-                adjusted,
-                tmpl._get_safety_stock(),
+                product.display_name, raw_qty, adjusted,
+                tmpl._get_safety_stock() if apply_safety else 0.0,
                 tmpl._get_minimum_order_qty(),
                 forecasted_on_hand,
             )
-
         return adjusted
 
     # =========================================================================
-    # Helper: collect all view-state periods with outstanding replenish_qty
+    # Helper: resolve vendor for a product
     # =========================================================================
 
-    def _mps_collect_replenish_states(self):
+    def _mps_get_vendor(self, product, company, quantity=0.0, uom=None):
         """
-        Return a list of view-state dicts for *this single schedule* where
-        replenish_qty > 0, sorted ascending by date_start.
+        Return the best res.partner vendor for ``product``.
+
+        Resolution order:
+          1. product._select_seller() — considers quantity breaks and date.
+          2. First entry in product.seller_ids filtered by company.
+          3. First entry in product.seller_ids (any company).
+
+        Returns a product.supplierinfo record (may be empty recordset if none
+        found, in which case the caller should handle gracefully).
         """
-        self.ensure_one()
-        all_states = self.get_production_schedule_view_state()
-
-        result = []
-        for mps_state in all_states:
-            if mps_state.get('id') != self.id:
-                continue
-            for period in mps_state.get('forecast_ids', []):
-                for key in ('date_start', 'date_stop'):
-                    val = period.get(key)
-                    if isinstance(val, str):
-                        period[key] = date_type.fromisoformat(val)
-
-                replenish_qty = period.get('replenish_qty') or 0.0
-                if replenish_qty > 0.0:
-                    result.append(period)
-
-        result.sort(key=lambda d: d['date_start'])
-        return result
-
-    # =========================================================================
-    # Helper: combined product lead time in days
-    # =========================================================================
-
-    def _mps_get_product_lead_time_days(self):
-        self.ensure_one()
-        product = self.product_id
-        lead = (
-            (product.produce_delay or 0.0)
-            + (product.days_to_purchase or 0.0)
-            + (product.purchase_delay or 0.0)
+        seller = product._select_seller(
+            quantity=quantity,
+            date=datetime.now().date(),
+            uom_id=uom,
         )
-        return max(lead, 0.0)
+        if seller:
+            return seller
+
+        # Fallback: first supplierinfo in company, then any
+        sellers = product.seller_ids.filtered(
+            lambda s: not s.company_id or s.company_id == company
+        )
+        if sellers:
+            return sellers[0]
+
+        if product.seller_ids:
+            return product.seller_ids[0]
+
+        return self.env['product.supplierinfo']
 
     # =========================================================================
-    # Helper: compute the procurement datetime for a period
+    # Helper: compute RFQ order date from period date + product lead time
     # =========================================================================
 
-    def _mps_get_procurement_date(self, date_start, based_on_lead_time=False):
-        self.ensure_one()
-        if isinstance(date_start, date_type) and not isinstance(date_start, datetime):
-            base_dt = datetime.combine(date_start, datetime.min.time())
+    def _mps_compute_order_date(self, date_needed, product, company, seller=None):
+        """
+        Return (order_date, realistic_date_planned) so that goods arrive
+        by ``date_needed``.
+
+        If order_date would be in the past, it is clamped to today and
+        date_planned is recalculated as today + total_lead so the RFQ
+        reflects when the goods will actually arrive.
+        """
+        if isinstance(date_needed, date_type) and not isinstance(date_needed, datetime):
+            base = date_needed
         else:
-            base_dt = date_start
+            base = date_needed.date() if isinstance(date_needed, datetime) else date_type.today()
 
-        if not based_on_lead_time:
-            return base_dt
+        vendor_lead = float(seller.delay if seller and seller.delay else 0.0)
+        days_to_purchase = float(getattr(product, 'days_to_purchase', 0.0) or 0.0)
+        security_lead = float(getattr(company, 'po_lead', 0.0) or 0.0)
 
-        lead_days = self._mps_get_product_lead_time_days()
-        procurement_dt = base_dt - timedelta(days=lead_days)
-        now = datetime.now()
-        if procurement_dt < now:
-            procurement_dt = now
-        return procurement_dt
+        total_lead = vendor_lead + days_to_purchase + security_lead
+        order_date = base - timedelta(days=total_lead)
 
-    # =========================================================================
-    # Helper: build a human-readable procurement origin string
-    # =========================================================================
+        today = date_type.today()
+        was_clamped = order_date < today
+        if was_clamped:
+            order_date = today
 
-    def _mps_get_replenishment_origin(self, date_start, date_stop):
-        self.ensure_one()
-        product_ref = (
-            self.product_id.default_code
-            or self.product_id.display_name
+        # If clamped, realistic arrival = today + total_lead, not the original date_needed
+        realistic_date_planned = (
+            today + timedelta(days=total_lead) if was_clamped else base
         )
+
+        _logger.info(
+            "[MPS RFQ] Lead time for %s: vendor=%.0fd  days_to_purchase=%.0fd  "
+            "security=%.0fd  total=%.0fd  date_needed=%s → order_date=%s  "
+            "date_planned=%s%s",
+            product.display_name, vendor_lead, days_to_purchase, security_lead,
+            total_lead, base, order_date, realistic_date_planned,
+            "  [LATE — clamped]" if was_clamped else "",
+        )
+        return order_date, realistic_date_planned
+
+    # =========================================================================
+    # Helper: build a human-readable origin string
+    # =========================================================================
+
+    def _mps_get_replenishment_origin(self, date_start, date_stop=None):
+        self.ensure_one()
+        product_ref    = self.product_id.default_code or self.product_id.display_name
         warehouse_code = self.warehouse_id.code or 'WH'
-        date_str = date_start.strftime('%Y-%m-%d') if hasattr(date_start, 'strftime') else str(date_start)
+        date_str = (
+            date_start.strftime('%Y-%m-%d')
+            if hasattr(date_start, 'strftime') else str(date_start)
+        )
         return f"MPS/{warehouse_code}/{product_ref}/{date_str}"
 
     # =========================================================================
-    # Helper: get or create a reusable procurement.group for this schedule
-    # =========================================================================
-
-    def _mps_get_or_create_procurement_group(self):
-        self.ensure_one()
-        group_name = (
-            f"MPS/{self.warehouse_id.code}/{self.product_id.display_name}"
-        )
-        group = self.env['procurement.group'].search(
-            [('name', '=', group_name)], limit=1
-        )
-        if not group:
-            group = self.env['procurement.group'].create({'name': group_name})
-        return group
-
-    # =========================================================================
-    # Helper: assemble the values dict for a Procurement namedtuple
-    # =========================================================================
-
-    def _mps_get_procurement_values(self, date_start, date_stop, procurement_date):
-        self.ensure_one()
-
-        extra_forecast = {
-            'date_start': date_start,
-            'date_stop': date_stop,
-        }
-        extra_values = self._get_procurement_extra_values(extra_forecast)
-
-        group = self._mps_get_or_create_procurement_group()
-
-        values = {
-            'date_planned': datetime.combine(date_start, datetime.min.time()),
-            'date_deadline': datetime.combine(date_stop, datetime.min.time()),
-            'group_id': group,
-            'warehouse_id': self.warehouse_id,
-            'company_id': self.company_id,
-        }
-        values.update(extra_values)
-        values['date_planned'] = datetime.combine(date_start, datetime.min.time())
-        values['group_id'] = group
-        values['company_id'] = self.company_id
-
-        return values
-
-    # =========================================================================
-    # Helper: Buy route lookup
-    # =========================================================================
-
-    def _mps_get_buy_route(self):
-        """Return the canonical 'Buy' stock route."""
-        self.ensure_one()
-        try:
-            buy_route = self.env.ref('purchase_stock.route_warehouse0_buy')
-            if buy_route:
-                return buy_route
-        except Exception:
-            pass
-        return self.env['stock.route'].search(
-            [('name', 'ilike', 'buy')], limit=1
-        )
-
-    def _mps_get_component_route(self, component):
-        """Return the correct stock route for a BOM component."""
-        if component.route_ids:
-            return component.route_ids[0]
-        if component.categ_id.route_ids:
-            return component.categ_id.route_ids[0]
-        return self._mps_get_buy_route()
-
-    # =========================================================================
-    # NEW — Stock coverage helpers (BUG 4 / BUG 5 fix)
+    # Helper: stock coverage — on-hand qty
     # =========================================================================
 
     def _mps_get_on_hand_qty(self, product, company, warehouse):
-        """
-        Return the *unreserved* on-hand quantity for a product at the
-        warehouse's stock location (lot_stock_id).
-
-        Falls back to product.qty_available (company-scoped) when no
-        warehouse location is available.
-
-        This is queried directly from stock.quant rather than relying on
-        MPS's forecasted_qty_0, which may be stale or misconfigured.
-
-        Args:
-            product   (product.product):  The product to check.
-            company   (res.company):       Company scope.
-            warehouse (stock.warehouse):   Warehouse to check.
-
-        Returns:
-            float: Unreserved on-hand quantity in the product's UoM.
-        """
+        """Return unreserved on-hand quantity at warehouse.lot_stock_id."""
         location = warehouse.lot_stock_id if warehouse else False
-
         if location:
-            quants = self.env['stock.quant'].search([
-                ('product_id',   '=', product.id),
-                ('location_id',  'child_of', location.id),
-                ('company_id',   '=', company.id),
+            quants  = self.env['stock.quant'].search([
+                ('product_id',  '=',  product.id),
+                ('location_id', 'child_of', location.id),
+                ('company_id',  '=',  company.id),
             ])
-            on_hand = sum(
-                max(0.0, q.quantity - q.reserved_quantity) for q in quants
-            )
+            on_hand = sum(max(0.0, q.quantity - q.reserved_quantity) for q in quants)
         else:
-            on_hand = product.with_context(
-                force_company=company.id
-            ).qty_available
+            on_hand = product.with_context(force_company=company.id).qty_available
 
         _logger.info(
             "[MPS Coverage] on_hand for %s @ %s : %.4f",
@@ -496,30 +329,16 @@ class MrpProductionScheduleAllPeriods(models.Model):
         )
         return on_hand
 
+    # =========================================================================
+    # Helper: confirmed PO incoming quantities by (year, month)
+    # =========================================================================
+
     def _mps_get_open_po_qty_by_month(self, product, company, warehouse):
-        """
-        Return confirmed-PO incoming quantities, keyed by (year, month).
-
-        Only includes purchase.order lines in state 'purchase' (confirmed)
-        whose receipt has not yet been completed (product_uom_qty > qty_received).
-
-        MPS's own incoming_qty only reflects stock moves that already exist.
-        Draft / sent POs do NOT create moves yet, so MPS may show zero incoming
-        even when significant supply is on order.  This helper queries
-        purchase.order.line directly to close that gap.
-
-        Args:
-            product   (product.product)
-            company   (res.company)
-            warehouse (stock.warehouse | False)
-
-        Returns:
-            dict  {(year, month): float}
-        """
+        """Return confirmed-PO incoming quantities keyed by (year, month)."""
         domain = [
-            ('product_id',        '=',  product.id),
-            ('order_id.state',    'in', ['purchase']),   # confirmed only
-            ('order_id.company_id', '=', company.id),
+            ('product_id',          '=',  product.id),
+            ('order_id.state',      'in', ['purchase']),
+            ('order_id.company_id', '=',  company.id),
         ]
         if warehouse:
             domain.append(
@@ -531,18 +350,11 @@ class MrpProductionScheduleAllPeriods(models.Model):
             remaining = max(0.0, line.product_uom_qty - (line.qty_received or 0.0))
             if remaining <= 0.0:
                 continue
-
             receipt_dt = line.date_planned
             if isinstance(receipt_dt, str):
                 receipt_dt = datetime.fromisoformat(receipt_dt)
-
             if not receipt_dt:
-                _logger.warning(
-                    "[MPS Coverage] PO line %s has no date_planned — skipped.",
-                    line.id,
-                )
                 continue
-
             key = (receipt_dt.year, receipt_dt.month)
             by_month[key] = by_month.get(key, 0.0) + remaining
 
@@ -554,50 +366,30 @@ class MrpProductionScheduleAllPeriods(models.Model):
             )
         return by_month
 
+    # =========================================================================
+    # Helper: open MO quantities by (year, month)
+    # =========================================================================
+
     def _mps_get_open_mo_qty_by_month(self, product, company, warehouse):
-        """
-        Return open Manufacturing Order quantities, keyed by (year, month).
-
-        Only includes MOs in state 'confirmed', 'progress', or 'to_close'
-        (i.e. not draft, done, or cancelled).
-
-        MPS should show these as incoming supply, but may miss them when the
-        MO's picking type / warehouse does not match the MPS schedule exactly.
-
-        Returns {} when the mrp.production model is not installed.
-
-        Args:
-            product   (product.product)
-            company   (res.company)
-            warehouse (stock.warehouse | False)
-
-        Returns:
-            dict  {(year, month): float}
-        """
+        """Return open MO expected output quantities keyed by (year, month)."""
         if not self.env['ir.model'].search(
             [('model', '=', 'mrp.production')], limit=1
         ):
             return {}
 
         domain = [
-            ('product_id',  '=',  product.id),
-            ('state',       'in', ['confirmed', 'progress', 'to_close']),
-            ('company_id',  '=',  company.id),
+            ('product_id', '=',  product.id),
+            ('state',      'in', ['confirmed', 'progress', 'to_close']),
+            ('company_id', '=',  company.id),
         ]
         if warehouse:
-            domain.append(
-                ('picking_type_id.warehouse_id', '=', warehouse.id)
-            )
+            domain.append(('picking_type_id.warehouse_id', '=', warehouse.id))
 
         by_month = {}
         for mo in self.env['mrp.production'].search(domain):
-            remaining = max(
-                0.0,
-                (mo.product_qty or 0.0) - (mo.qty_produced or 0.0)
-            )
+            remaining = max(0.0, (mo.product_qty or 0.0) - (mo.qty_produced or 0.0))
             if remaining <= 0.0:
                 continue
-
             sched_date = (
                 mo.date_deadline
                 or getattr(mo, 'date_planned_start', None)
@@ -607,7 +399,6 @@ class MrpProductionScheduleAllPeriods(models.Model):
                 sched_date = datetime.fromisoformat(sched_date)
             if not sched_date:
                 continue
-
             key = (sched_date.year, sched_date.month)
             by_month[key] = by_month.get(key, 0.0) + remaining
 
@@ -620,329 +411,602 @@ class MrpProductionScheduleAllPeriods(models.Model):
         return by_month
 
     # =========================================================================
-    # Helper: component procurements for 'never' finished goods
+    # Helper: detect manufacture route
     # =========================================================================
 
-    def _mps_get_raw_component_qtys_for_never_schedule(
-        self, outstanding_qty, extra_forecast, extra_values
-    ):
+    def _mps_has_manufacture_route(self, production_schedule):
         """
-        Explode the manufacture BOM for a 'never' finished good and return
-        a list of raw component quantity dicts with NO safety_stock or MOQ applied.
+        Return True if the schedule/product/category declares a Manufacture route.
 
-        Safety stock and MOQ are deferred so the caller can accumulate quantities
-        across multiple finished goods sharing the same raw material, then apply
-        the rules exactly once via the raw_qty_accumulator.
-
-        Returns list of dicts:
-            {
-                'product':      product.product record,
-                'raw_qty':      float (exploded qty, unadjusted),
-                'uom_id':       product.uom record,
-                'extra_values': procurement values dict (with route set),
-                'company':      res.company record,
-            }
-        Returns [] when no BOM is found.
+        Checks three sources in priority order:
+          1. production_schedule.route_id  (MPS form "Route" field — most authoritative)
+          2. product.route_ids             (Inventory tab on product form)
+          3. product.categ_id.route_ids    (product category routes)
         """
-        self.ensure_one()
-
-        bom = self.env['mrp.bom']._bom_find(
-            self.product_id,
-            company_id=self.company_id.id,
-            bom_type='normal',
-        )[self.product_id]
-
-        if not bom:
-            _logger.warning(
-                "[MPS All-Periods] replenish_trigger='never' on %s "
-                "but no manufacture BOM found - cannot create component PRs.",
-                self.product_id.display_name,
-            )
-            return []
-
-        _dummy, bom_lines = bom.explode(self.product_id, outstanding_qty)
-
-        all_component_ids = [line[0].product_id.id for line in bom_lines]
-        already_scheduled_ids = self.env['mrp.production.schedule'].search([
-            ('company_id',   '=', self.company_id.id),
-            ('warehouse_id', '=', self.warehouse_id.id),
-            ('product_id',   'in', all_component_ids),
-        ]).product_id.ids
-
-        result = []
-        for bom_line, line_data in bom_lines:
-            component = bom_line.product_id
-
-            if component.id in already_scheduled_ids:
-                continue
-
-            component_route = self._mps_get_component_route(component)
-            component_values = dict(extra_values)
-            if component_route:
-                component_values['route_ids'] = component_route
-            else:
-                component_values.pop('route_ids', None)
-            component_values.pop('supplierinfo_id', None)
-
-            result.append({
-                'product':      component,
-                'raw_qty':      line_data['qty'],   # raw - no safety_stock/MOQ yet
-                'uom_id':       bom_line.product_uom_id,
-                'extra_values': component_values,
-                'company':      self.company_id,
-            })
-
-        return result
-
-
-    # =========================================================================
-    # PR creation helpers
-    # =========================================================================
-
-    def _mps_is_manufacture_procurement(self, proc):
-        """
-        Return True ONLY if this procurement will generate a Manufacturing Order.
-        """
-        def _route_is_manufacture(route):
+        def _is_mfg(route):
             if not route:
                 return False
             name = (route.name or '').lower()
             return 'manufactur' in name or 'fabricat' in name
 
-        route_in_values = proc.values.get('route_ids')
-        if route_in_values:
-            try:
-                routes = list(route_in_values)
-            except TypeError:
-                routes = [route_in_values]
-            for r in routes:
-                if _route_is_manufacture(r):
-                    return True
-            return False
-
-        product = proc.product_id
-        all_routes = list(product.route_ids) + list(product.categ_id.route_ids)
-        if not all_routes:
-            return False
-
-        manufacture_routes     = [r for r in all_routes if _route_is_manufacture(r)]
-        non_manufacture_routes = [r for r in all_routes if not _route_is_manufacture(r)]
-
-        if manufacture_routes and not non_manufacture_routes:
+        if _is_mfg(production_schedule.route_id):
             return True
+
+        for r in list(production_schedule.product_id.route_ids) + \
+                 list(production_schedule.product_id.categ_id.route_ids):
+            if _is_mfg(r):
+                return True
 
         return False
 
-    def _mps_is_buy_procurement(self, proc):
-        return not self._mps_is_manufacture_procurement(proc)
-
-    def _mps_resolve_department_for_proc(self, proc):
-        """
-        Return the hr.department of the user who pressed Replenish.
-        """
-        user = self.env.user
-        employee = user.employee_id
-        if employee and employee.department_id:
-            return employee.department_id
-
-        raise UserError(_(
-            'Cannot create a Purchase Requisition: the user "%s" has no '
-            'Department set on their Employee profile.\n\n'
-            'Please open the Employee record for this user and assign a '
-            'Department, then try again.'
-        ) % user.name)
-
     # =========================================================================
-    # Helper: duplicate PR line detection
+    # Helper: detect manufacture route on a plain product (no schedule context)
+    # Used when inspecting BOM components during recursive explosion.
     # =========================================================================
 
-    def _mps_find_existing_pr_line(self, product_id, quantity):
+    def _mps_component_has_manufacture_route(self, product):
         """
-        Search for an existing open purchase.approval line where:
-          - product matches exactly
-          - quantity matches exactly (within float tolerance of 0.001)
-
-        Only open PRs are considered: draft / waiting_approval / approved.
+        Return True if ``product`` or its category carries a Manufacture route.
+        Unlike _mps_has_manufacture_route() this does NOT look at a schedule
+        record — it is used for BOM components where no MPS schedule exists.
         """
-        active_pr_states = ['draft', 'waiting_approval', 'approved']
+        def _is_mfg(route):
+            if not route:
+                return False
+            name = (route.name or '').lower()
+            return 'manufactur' in name or 'fabricat' in name
 
-        candidates = self.env['purchase.approval.line'].search([
-            ('product_id',        '=',  product_id),
-            ('approval_id.state', 'in', active_pr_states),
+        for r in list(product.route_ids) + list(product.categ_id.route_ids):
+            if _is_mfg(r):
+                return True
+        return False
+
+    # =========================================================================
+    # Helper: duplicate RFQ line detection
+    # =========================================================================
+
+    def _mps_find_existing_rfq_line(self, product_id, quantity, year=None, month=None):
+        """
+        Search for a draft/sent purchase.order.line for the same product + qty,
+        optionally scoped to a specific period (year + month) via date_planned.
+
+        Without year/month the check is period-agnostic.
+        Returns a recordset of matching purchase.order.line records.
+        """
+        rfq_states = ['draft', 'sent']
+        candidates = self.env['purchase.order.line'].search([
+            ('product_id',      '=',  product_id),
+            ('order_id.state',  'in', rfq_states),
         ])
 
         tolerance = 0.001
-        return candidates.filtered(
-            lambda l, q=quantity, t=tolerance: abs(l.quantity - q) <= t
+        matched   = candidates.filtered(
+            lambda l, q=quantity, t=tolerance: abs(l.product_uom_qty - q) <= t
         )
 
+        if matched and year is not None and month is not None:
+            def _in_period(line, y=year, m=month):
+                dp = line.date_planned
+                if not dp:
+                    return False
+                if hasattr(dp, 'year'):
+                    return dp.year == y and dp.month == m
+                try:
+                    d = date_type.fromisoformat(str(dp))
+                    return d.year == y and d.month == m
+                except Exception:
+                    return False
+            matched = matched.filtered(_in_period)
+
+        return matched
+
     # =========================================================================
-    # PR creation
+    # Helper: get or create receipt picking type for warehouse
     # =========================================================================
 
-    def _mps_create_prs_from_buy_procurements(self, buy_procurements):
-        """
-        Convert a list of Buy procurements into purchase.approval (PR) records,
-        silently skipping any procurement whose product + quantity is already
-        covered by an existing draft/confirmed/approved PR.
-        """
-        PurchaseApproval = self.env['purchase.approval']
-        human_requester = self.env.user
-        odoobot = self.env.ref('base.user_root')
-        requester = odoobot
+    def _mps_get_picking_type(self, warehouse, company):
+        """Return the incoming picking type for the given warehouse."""
+        if warehouse:
+            pt = self.env['stock.picking.type'].search([
+                ('code',         '=', 'incoming'),
+                ('warehouse_id', '=', warehouse.id),
+                ('company_id',   '=', company.id),
+            ], limit=1)
+            if pt:
+                return pt
+        return self.env['stock.picking.type'].search([
+            ('code',       '=', 'incoming'),
+            ('company_id', '=', company.id),
+        ], limit=1)
 
-        # -- Duplicate check --------------------------------------------------
-        filtered_procurements = []
+    # =========================================================================
+    # Core RFQ creation
+    # =========================================================================
+
+    def _mps_create_rfqs(self, rfq_lines, origin=None):
+        """
+        Create RFQ (purchase.order in state='draft') records from a list of
+        line specification dicts.
+
+        Each dict in ``rfq_lines`` must have:
+            product   (product.product)
+            qty       (float)
+            uom       (uom.uom)
+            company   (res.company)
+            warehouse (stock.warehouse | False)
+            date_needed (date)   — goes to order_line.date_planned
+            year      (int)
+            month     (int)
+
+        Lines are grouped by (vendor.id, company.id, warehouse.id, year, month).
+        One purchase.order per group is created; multiple lines land in the same
+        RFQ when the same vendor supplies several products in the same period.
+
+        Within each group, lines for the SAME (product_id, date_planned) are
+        MERGED — their quantities are summed — so each product appears at most
+        once per RFQ line.
+
+        Returns a list of purchase.order records created.
+        """
+        PurchaseOrder  = self.env['purchase.order']
+        created_rfqs   = []
         duplicate_info = []
 
-        for proc in buy_procurements:
-            existing_lines = self._mps_find_existing_pr_line(
-                proc.product_id.id, proc.product_qty
+        # ── Duplicate check ───────────────────────────────────────────────────
+        filtered_lines = []
+        for spec in rfq_lines:
+            existing = self._mps_find_existing_rfq_line(
+                spec['product'].id, spec['qty'],
+                year=spec['year'], month=spec['month'],
             )
-
-            if existing_lines:
-                pr_names = sorted({
-                    line.approval_id.name
-                    for line in existing_lines
-                    if line.approval_id.name
-                })
+            if existing:
+                po_names = sorted({l.order_id.name for l in existing if l.order_id.name})
                 duplicate_info.append((
-                    proc.product_id.display_name,
-                    proc.product_qty,
-                    ', '.join(pr_names) or '(unnamed)',
+                    spec['product'].display_name,
+                    spec['qty'],
+                    ', '.join(po_names) or '(unnamed)',
                 ))
                 _logger.info(
-                    "[MPS All-Periods] DUPLICATE BLOCKED: product=%s  "
-                    "qty=%.3f  already in PR(s): %s",
-                    proc.product_id.display_name,
-                    proc.product_qty,
-                    ', '.join(pr_names),
+                    "[MPS RFQ] DUPLICATE BLOCKED: %s qty=%.3f already in RFQ(s): %s",
+                    spec['product'].display_name, spec['qty'],
+                    ', '.join(po_names),
                 )
             else:
-                filtered_procurements.append(proc)
+                filtered_lines.append(spec)
 
         if duplicate_info:
             conflict_lines = "\n".join(
-                "  * %s  (qty: %.3f)  ->  %s" % (name, qty, prs)
-                for name, qty, prs in duplicate_info
+                "  • %s  (qty: %.3f)  →  %s" % (name, qty, rfqs)
+                for name, qty, rfqs in duplicate_info
             )
             raise UserError(_(
                 "Cannot replenish: the following item(s) already exist in an "
-                "open Purchase Requisition with the same quantity.\n"
-                "Please review or cancel the existing PR before replenishing again.\n\n"
+                "open RFQ with the same quantity.\n"
+                "Please review or cancel the existing RFQ before replenishing again.\n\n"
                 "%s"
             ) % conflict_lines)
 
-        if not filtered_procurements:
-            _logger.info(
-                "[MPS All-Periods] All buy procurements are already covered "
-                "by existing PRs. No new PRs created."
-            )
+        if not filtered_lines:
+            _logger.info("[MPS RFQ] All lines already covered by existing RFQs.")
             return []
 
-        # -- Group: one PR per (company, warehouse, department, product, year, month)
+        # ── Group by (vendor, company, warehouse, year, month) ────────────────
+        # Within each group, lines are further keyed by (product_id, date_planned)
+        # so that the same product arriving on the same date is merged into a
+        # single RFQ line (quantities summed) rather than creating duplicates.
         groups = {}
 
-        for proc in filtered_procurements:
-            department = self._mps_resolve_department_for_proc(proc)
-            company    = proc.values.get('company_id') or self.env.company
-            warehouse  = proc.values.get('warehouse_id')
+        for spec in filtered_lines:
+            product   = spec['product']
+            company   = spec['company']
+            warehouse = spec['warehouse']
+            year      = spec['year']
+            month     = spec['month']
 
-            date_planned = proc.values.get('date_planned')
-            if isinstance(date_planned, datetime):
-                year, month = date_planned.year, date_planned.month
-            elif isinstance(date_planned, date_type):
-                year, month = date_planned.year, date_planned.month
-            else:
-                now = datetime.now()
-                year, month = now.year, now.month
+            seller = self._mps_get_vendor(
+                product, company,
+                quantity=spec['qty'],
+                uom=spec.get('uom'),
+            )
+            # product.supplierinfo.partner_id is the res.partner (vendor).
+            partner = seller.partner_id if seller else False
 
-            key = (
+            if not partner:
+                _logger.warning(
+                    "[MPS RFQ] No vendor found for %s — skipping RFQ line.",
+                    product.display_name,
+                )
+                continue
+
+            order_date, date_planned = self._mps_compute_order_date(
+                spec['date_needed'], product, company, seller=seller,
+            )
+
+            group_key = (
+                partner.id,
                 company.id,
                 warehouse.id if warehouse else False,
-                department.id,
-                proc.product_id.id,
                 year,
                 month,
             )
 
-            if key not in groups:
-                groups[key] = {
-                    'company':      company,
-                    'warehouse':    warehouse,
-                    'department':   department,
-                    'product':      proc.product_id,
-                    'year':         year,
-                    'month':        month,
-                    'date_planned': date_planned,
-                    'procs':        [],
+            if group_key not in groups:
+                groups[group_key] = {
+                    'partner':    partner,
+                    'company':    company,
+                    'warehouse':  warehouse,
+                    'year':       year,
+                    'month':      month,
+                    'order_date': order_date,
+                    'lines':      {},   # keyed by (product_id, date_planned_dt)
                 }
-            groups[key]['procs'].append(proc)
-
-        # -- Create one PR per group ------------------------------------------
-        import calendar
-        created_prs = []
-
-        for key, group in groups.items():
-            month_name  = calendar.month_abbr[group['month']]
-            product_ref = (
-                group['product'].default_code
-                or group['product'].display_name
-            )
-
-            line_vals = []
-            for proc in group['procs']:
-                line_vals.append((0, 0, {
-                    'product_id':  proc.product_id.id,
-                    'description': proc.name or proc.product_id.display_name,
-                    'quantity':    proc.product_qty,
-                }))
-
-            today = datetime.now().date()
-            if group['year'] == today.year and group['month'] == today.month:
-                pr_date = today
             else:
-                pr_date = date_type(group['year'], group['month'], 1)
+                # Use the earliest order_date across all lines in the group
+                if order_date < groups[group_key]['order_date']:
+                    groups[group_key]['order_date'] = order_date
 
-            pr_vals = {
-                'requester_id':  requester.id,
-                'department_id': group['department'].id,
-                'company_id':    group['company'].id,
-                'state':         'approved',
-                'date':          pr_date,
-                'line_ids':      line_vals,
-            }
-            if group['warehouse']:
-                pr_vals['warehouse_id'] = group['warehouse'].id
+            # ── Compute date_planned as datetime ─────────────────────────────
+            date_needed = spec['date_needed']
+            if isinstance(date_planned, date_type) and not isinstance(date_planned, datetime):
+                date_planned_dt = datetime.combine(date_planned, datetime.min.time())
+            else:
+                date_planned_dt = date_planned
 
-            pr = PurchaseApproval.create(pr_vals)
-            pr.message_post(
-                body=_(
-                    'Auto-approved by MPS replenishment. '
-                    'Product: <b>%s</b>  Period: <b>%s %s</b>  '
-                    'Triggered by: <b>%s</b>'
-                ) % (
-                    group['product'].display_name,
-                    month_name,
-                    group['year'],
-                    human_requester.name,
+            # ── Merge by (product_id, date_planned) within the group ──────────
+            line_key = (product.id, date_planned_dt)
+            group_lines = groups[group_key]['lines']
+
+            if line_key in group_lines:
+                old_qty = group_lines[line_key]['product_qty']
+                group_lines[line_key]['product_qty'] += spec['qty']
+                _logger.info(
+                    "[MPS RFQ] Merged line for %s on %s: %.4f + %.4f = %.4f",
+                    product.display_name, date_planned_dt,
+                    old_qty, spec['qty'], group_lines[line_key]['product_qty'],
                 )
+            else:
+                group_lines[line_key] = {
+                    'product_id':   product.id,
+                    'product_uom':  spec['uom'].id if spec.get('uom') else product.uom_po_id.id,
+                    'product_qty':  spec['qty'],
+                    'price_unit':   seller.price if seller else 0.0,
+                    'date_planned': date_planned_dt,
+                    'name':         product.display_name,
+                }
+
+        # ── Create one RFQ per group ──────────────────────────────────────────
+        for group_key, group in groups.items():
+            if not group['lines']:
+                continue
+
+            picking_type = self._mps_get_picking_type(group['warehouse'], group['company'])
+            month_name   = calendar.month_abbr[group['month']]
+
+            # group['lines'] is a dict keyed by (product_id, date_planned_dt);
+            # extract the plain line dicts for the ORM.
+            orm_lines = list(group['lines'].values())
+
+            po_vals = {
+                'partner_id':  group['partner'].id,
+                'company_id':  group['company'].id,
+                'date_order':  datetime.combine(group['order_date'], datetime.min.time()),
+                'origin':      origin or (
+                    f"MPS/{group['year']}-{group['month']:02d}"
+                ),
+                'order_line':  [(0, 0, l) for l in orm_lines],
+            }
+            if picking_type:
+                po_vals['picking_type_id'] = picking_type.id
+
+            rfq = PurchaseOrder.create(po_vals)
+            rfq.message_post(
+                body=_(
+                    'Created automatically by MPS replenishment.  '
+                    'Period: <b>%s %s</b>  '
+                    'Triggered by: <b>%s</b>'
+                ) % (month_name, group['year'], self.env.user.name)
             )
 
             _logger.info(
-                "[MPS All-Periods] Created PR %s  product=%s  period=%s-%02d  "
-                "dept=%s  requester=%s  lines=%d",
-                pr.name,
-                group['product'].display_name,
-                group['year'],
-                group['month'],
-                group['department'].name,
-                human_requester.login,
-                len(group['procs']),
+                "[MPS RFQ] Created RFQ %s  vendor=%s  period=%d-%02d  "
+                "lines=%d  order_date=%s",
+                rfq.name, group['partner'].name,
+                group['year'], group['month'],
+                len(orm_lines), group['order_date'],
             )
-            created_prs.append(pr)
+            created_rfqs.append(rfq)
 
-        return created_prs
+        return created_rfqs
+
+    # =========================================================================
+    # BOM explosion → RFQ lines (recursive, handles SFG manufacture components)
+    # =========================================================================
+
+    def _mps_build_component_rfq_lines_from_bom(
+            self,
+            product,
+            qty,
+            uom,
+            date_start,
+            date_stop,
+            company,
+            warehouse,
+            comp_coverage_state,
+    ):
+        """
+        Entry point: explode the BOM for ``product`` × ``qty`` and return all
+        buy-route leaf component RFQ line specs.
+        """
+        self.ensure_one()
+        return self._mps_collect_rfq_lines_recursive(
+            product=product,
+            qty=qty,
+            company=company,
+            warehouse=warehouse,
+            date_start=date_start,
+            date_stop=date_stop,
+            comp_coverage_state=comp_coverage_state,
+            ancestors=set(),
+            depth=0,
+        )
+
+    def _mps_collect_rfq_lines_recursive(
+            self,
+            product,
+            qty,
+            company,
+            warehouse,
+            date_start,
+            date_stop,  # ← add this
+            comp_coverage_state,
+            ancestors,
+            depth,
+    ):
+        """
+        Recursive BOM explosion used by _mps_build_component_rfq_lines_from_bom.
+
+        For each component in the BOM:
+          • Has own MPS schedule          → skip (it replenishes itself)
+          • Circular reference / too deep → skip with warning
+          • Has Manufacture route          → deduct SFG coverage, then recurse
+                                            into the SFG's own BOM
+          • Buy-route (leaf)               → apply coverage + MOQ, emit RFQ spec
+
+        Args:
+            product            Finished good or SFG whose BOM to explode.
+            qty                Quantity required (net, already coverage-adjusted
+                               by the caller for non-top-level calls).
+            company / warehouse
+            date_start         Period start date (determines period_key).
+            comp_coverage_state Mutable shared coverage dict.
+            ancestors          Set of product IDs on the current call stack
+                               (circular reference guard).
+            depth              Current recursion depth (safety cap = 8).
+
+        Returns:
+            list of RFQ line spec dicts for _mps_create_rfqs().
+        """
+        MAX_DEPTH  = 8
+        period_key = (date_start.year, date_start.month)
+
+        if depth > MAX_DEPTH:
+            _logger.warning(
+                "[MPS BOM Explode] Max recursion depth (%d) reached for %s "
+                "— stopping here.",
+                MAX_DEPTH, product.display_name,
+            )
+            return []
+
+        if product.id in ancestors:
+            _logger.warning(
+                "[MPS BOM Explode] Circular BOM reference detected: %s "
+                "already in ancestor chain %s — skipping.",
+                product.display_name, ancestors,
+            )
+            return []
+
+        # ── 1. Find BOM ───────────────────────────────────────────────────────
+        bom = self.env['mrp.bom']._bom_find(
+            product,
+            company_id=company.id,
+            bom_type='normal',
+        )[product]
+
+        if not bom:
+            if depth > 0:
+                _logger.warning(
+                    "[MPS BOM Explode] Manufacture-route component %s has no "
+                    "BOM and no vendor — cannot determine what to order. "
+                    "Add a BOM or a vendor pricelist to this product.",
+                    product.display_name,
+                )
+            else:
+                _logger.warning(
+                    "[MPS BOM Explode] No normal BOM for top-level product %s.",
+                    product.display_name,
+                )
+            return []
+
+        _dummy, bom_lines = bom.explode(product, qty)
+        if not bom_lines:
+            _logger.warning(
+                "[MPS BOM Explode] BOM explosion for %s returned no lines.",
+                product.display_name,
+            )
+            return []
+
+        # ── 2. Identify components with their own MPS schedules ───────────────
+        all_comp_ids = [bl.product_id.id for bl, _ld in bom_lines]
+        already_scheduled_ids = set(
+            self.env['mrp.production.schedule'].search([
+                ('company_id',   '=', company.id),
+                ('warehouse_id', '=', warehouse.id),
+                ('product_id',   'in', all_comp_ids),
+            ]).product_id.ids
+        )
+
+        # Build ancestor set for child calls (add current product)
+        child_ancestors = ancestors | {product.id}
+
+        rfq_line_specs = []
+
+        for bom_line, line_data in bom_lines:
+            comp     = bom_line.product_id
+            comp_qty = line_data['qty']   # scaled to the requested qty already
+
+            # ── Guard: circular reference or FG self-reference ────────────────
+            if comp.id == product.id or comp.id in ancestors:
+                _logger.warning(
+                    "[MPS BOM Explode] Circular/self reference: %s in BOM of "
+                    "%s — skipped.",
+                    comp.display_name, product.display_name,
+                )
+                continue
+
+            # ── Skip components with own MPS schedule ─────────────────────────
+            if comp.id in already_scheduled_ids:
+                _logger.info(
+                    "[MPS BOM Explode] depth=%d  %s → component %s has its "
+                    "own MPS schedule — skipped.",
+                    depth, product.display_name, comp.display_name,
+                )
+                continue
+
+            # ── Coverage: initialise on first encounter ───────────────────────
+            if comp.id not in comp_coverage_state:
+                comp_on_hand     = self._mps_get_on_hand_qty(comp, company, warehouse)
+                comp_po_by_month = self._mps_get_open_po_qty_by_month(
+                    comp, company, warehouse,
+                )
+                comp_coverage_state[comp.id] = {
+                    'on_hand':                 comp_on_hand,
+                    'po_by_month':             comp_po_by_month,
+                    'balance':                 comp_on_hand,
+                    'safety_stock_considered': False,
+                }
+                _logger.info(
+                    "[MPS BOM Explode] depth=%d  %s: initial coverage "
+                    "on_hand=%.4f  po_months=%s",
+                    depth, comp.display_name, comp_on_hand,
+                    list(comp_po_by_month.keys()),
+                )
+
+            cov         = comp_coverage_state[comp.id]
+            po_arriving = cov['po_by_month'].get(period_key, 0.0)
+            cov['balance'] += po_arriving
+
+            net_comp_qty   = max(0.0, comp_qty - cov['balance'])
+            cov['balance'] = max(0.0, cov['balance'] - comp_qty)
+
+            _logger.info(
+                "[MPS BOM Explode] depth=%d  %-30s  period %d-%02d : "
+                "bom_qty=%.4f  po_arriving=%.4f  net_qty=%.4f  "
+                "balance_after=%.4f",
+                depth, comp.display_name, period_key[0], period_key[1],
+                comp_qty, po_arriving, net_comp_qty, cov['balance'],
+            )
+
+            if net_comp_qty <= 0.0:
+                _logger.info(
+                    "[MPS BOM Explode] depth=%d  %s period %d-%02d fully "
+                    "covered by on-hand / open PO — no RFQ needed.",
+                    depth, comp.display_name, period_key[0], period_key[1],
+                )
+                continue
+
+            # ── Manufacture-route SFG: recurse into its BOM ───────────────────
+            if self._mps_component_has_manufacture_route(comp):
+                _logger.info(
+                    "[MPS BOM Explode] depth=%d  %s is a manufacture-route "
+                    "SFG (net_qty=%.4f) — recursing into its BOM.",
+                    depth, comp.display_name, net_comp_qty,
+                )
+                sub_specs = self._mps_collect_rfq_lines_recursive(
+                    product=comp,
+                    qty=net_comp_qty,
+                    company=company,
+                    warehouse=warehouse,
+                    date_start=date_start,
+                    date_stop=date_stop,  # ← this was missing
+                    comp_coverage_state=comp_coverage_state,
+                    ancestors=child_ancestors,
+                    depth=depth + 1,
+                )
+                rfq_line_specs.extend(sub_specs)
+                # Do NOT carry surplus for SFGs — surplus is an internal
+                # production decision, not a purchase surplus.
+                continue
+
+            # ── Buy-route leaf component: apply MOQ + emit RFQ spec ──────────
+            # NEW
+            # ── Buy-route leaf component: apply safety stock once + MOQ ──
+            tmpl = comp.product_tmpl_id
+
+            safety_stock = (
+                tmpl._get_safety_stock()
+                if (
+                    not cov.get('safety_stock_considered')
+                    and hasattr(tmpl, '_get_safety_stock')
+                ) else 0.0
+            )
+            cov['safety_stock_considered'] = True
+
+            # Only add safety stock if the current balance won't already cover it
+            # (i.e. don't double-count if on-hand already exceeds safety stock)
+            safety_top_up = max(0.0, safety_stock - cov['balance'])
+            net_with_safety = net_comp_qty + safety_top_up
+
+            if safety_top_up > 0.0:
+                _logger.info(
+                    "[MPS BOM Explode] depth=%d  %s period %d-%02d: "
+                    "safety_stock=%.4f  balance_after_period=%.4f  "
+                    "top_up=%.4f  net_comp_qty %.4f → %.4f",
+                    depth, comp.display_name, period_key[0], period_key[1],
+                    safety_stock, cov['balance'], safety_top_up,
+                    net_comp_qty, net_with_safety,
+                )
+
+            moq = (
+                tmpl._get_minimum_order_qty()
+                if hasattr(tmpl, '_get_minimum_order_qty') else 0.0
+            )
+            if moq and moq > 0.0:
+                adjusted = math.ceil(net_with_safety / moq) * moq
+                if adjusted != net_with_safety:
+                    _logger.info(
+                        "[MPS BOM Explode] depth=%d  %s MOQ rounding: "
+                        "%.4f → %.4f  (moq=%.4f)",
+                        depth, comp.display_name,
+                        net_with_safety, adjusted, moq,
+                    )
+            else:
+                adjusted = net_with_safety
+
+            # Carry MOQ surplus back into the running balance so the next
+            # period does not over-order for the same buy-route component.
+            surplus = adjusted - net_with_safety
+            if (
+                    surplus > 0.0):
+                cov['balance'] += surplus
+                _logger.info(
+                    "[MPS BOM Explode] depth=%d  %s period %d-%02d: "
+                    "MOQ surplus %.4f carried forward → balance=%.4f",
+                    depth, comp.display_name, period_key[0], period_key[1],
+                    surplus, cov['balance'],
+                )
+
+            rfq_line_specs.append({
+                'product': comp,
+                'qty': adjusted,
+                'uom': bom_line.product_uom_id,
+                'company': company,
+                'warehouse': warehouse,
+                'date_needed': date_type(period_key[0], period_key[1], 1),
+                'year': period_key[0],
+                'month': period_key[1],
+            })
+
+        return rfq_line_specs
 
     # =========================================================================
     # Main override: action_replenish
@@ -951,54 +1015,51 @@ class MrpProductionScheduleAllPeriods(models.Model):
     def action_replenish(self, based_on_lead_time=False):
         """
         Override action_replenish() to process ALL visible forecast periods
-        AND route ALL Buy procurements to Purchase Requisitions instead of RFQs.
+        and route every procurement to an RFQ (purchase.order, state='draft').
 
-        KEY BEHAVIOURAL CHANGES vs. Odoo standard
-        ------------------------------------------
-        1. BOM + ROUTE DRIVEN (no replenish_trigger dependency):
-           Every button press runs the full BOM-detection and component-explosion
-           logic regardless of replenish_trigger.  Products with a normal BOM
-           and no Manufacture route will always have their BOM exploded and
-           component PRs created — users no longer need to set trigger='never'.
+        ROUTING PER PRODUCT
+        -------------------
+        MANUFACTURE ROUTE  (schedule.route_id, product.route_ids, or
+                            product.categ_id.route_ids contains Manufacture):
+            → The product's BOM is exploded.
+            → An RFQ is created for each component whose net need > 0.
+            → Component RFQ order_date = date_start − component lead time.
+            → No Manufacturing Order is created; the planner creates MOs
+              manually after reviewing the replenishment.
 
-        2. ALL forecast periods with replenish_qty > 0 are processed.
+        BUY ROUTE (all other products):
+            → An RFQ is created directly for the finished good.
+            → RFQ order_date = date_start − product lead time.
 
-        3. replenish_qty is read from the view-state dict (computed correctly).
+        TRIGGER='never' (regardless of route):
+            → Same as manufacture route above: BOM exploded, component RFQs
+              created, no MO.  This is the "manual MO" workflow where the
+              planner wants raw materials purchased but controls MO creation.
 
-        4. Date keys are normalised to date objects before comparison.
+        STOCK COVERAGE
+            On-hand + confirmed incoming PO + open MO quantities are deducted
+            before ordering.  Running balance maintained across periods.
 
-        5. Buy procurements ALWAYS create purchase.approval (PR) records,
-           never RFQs.
+        SURPLUS CARRY-FORWARD
+            MOQ rounding surplus is carried into the next period's balance to
+            avoid cumulative over-ordering.
 
-        6. STOCK COVERAGE (BUG 4 / BUG 5 FIX):
-           Before creating any procurement, on-hand stock and confirmed
-           incoming supply (POs + MOs) are queried directly from the database.
-           A running available balance is maintained per schedule across periods
-           (earliest period first).
+        DUPLICATE DETECTION
+            Existing draft/sent RFQs for the same product + qty + period raise
+            a UserError so the planner can review before re-running.
 
-        7. SURPLUS CARRY-FORWARD WITH SAFETY-STOCK PROTECTION (BUG 6 + 7 FIX):
-           After the accumulator is fully populated, a second pass groups
-           entries by (product_id, company_id, warehouse_id) sorted ascending
-           by (year, month).  Safety stock is treated as PROTECTED inventory:
-
-             safety_stock    = product.template._get_safety_stock()
-             usable_surplus  = max(0, surplus − safety_stock)
-             net_need        = max(0, raw_qty − usable_surplus)
-             ordered_qty     = _mps_adjust_procurement_qty(net_need)
-             surplus         = ordered_qty − net_need   ← carried to next month
-
-           Months where net_need == 0 are skipped (no PR, period marked launched).
-
-        8. Duplicate detection: existing draft/confirmed/approved PRs for the
-           same product + quantity raise a UserError listing all conflicts.
+        LINE MERGING
+            Within each RFQ (grouped by vendor/company/warehouse/period),
+            multiple specs for the same product + date_planned are merged into
+            a single order line (quantities summed).
         """
         _logger.info(
-            "[MPS All-Periods] action_replenish called | schedules=%s | lead_time=%s",
+            "[MPS All-Periods] action_replenish called | schedules=%s | "
+            "lead_time=%s",
             self.ids, based_on_lead_time,
         )
 
         production_schedules = self
-
         if not production_schedules:
             _logger.info("[MPS All-Periods] No schedules selected. Returning.")
             return False
@@ -1006,77 +1067,109 @@ class MrpProductionScheduleAllPeriods(models.Model):
         production_schedule_states = production_schedules.get_production_schedule_view_state()
         state_by_id = {mps['id']: mps for mps in production_schedule_states}
 
-        procurements = []
-        forecasts_values = []
-        forecasts_to_set_as_launched = self.env['mrp.product.forecast']
-
-        # ── Raw-qty accumulator ───────────────────────────────────────────────
-        # Key: (product_id, company_id, warehouse_id, year, month)
-        # Value: accumulated procurement data (safety_stock / MOQ applied once
-        #        after the full loop).
+        # Accumulator for buy-route finished goods (PATH D) and phantom BOMs
+        # (PATH C).  Manufacture-route products (PATH A) and trigger='never'
+        # with a BOM (PATH B) are handled inline and emit rfq_line_specs directly.
         raw_qty_accumulator = {}
 
-        # ── Track which forecast records to mark launched per accumulator key ─
-        # We defer "mark as launched" until after the surplus pass so that
-        # months that are fully covered by surplus are still marked launched
-        # without creating a PR.
-        acc_key_to_forecast_records = {}   # acc_key → set of mrp.product.forecast ids
-        acc_key_to_forecast_values  = {}   # acc_key → list of forecast value dicts
+        # Per-schedule component coverage state shared across periods.
+        # { schedule_id: { comp_product_id: {'on_hand', 'po_by_month', 'balance'} } }
+        schedule_comp_coverage = {}
 
+        # All RFQ line specs collected from PATH A and PATH B
+        all_rfq_line_specs = []
+
+        # Forecast records to mark as procurement_launched
+        forecasts_to_set_as_launched = self.env['mrp.product.forecast']
+        forecasts_values             = []
+        # deferred tracking: (schedule.id, year, month) → (sched, ds, de, existing)
+        acc_key_to_forecast_records  = {}
+
+        # ── Per-schedule processing ───────────────────────────────────────────
         for production_schedule in production_schedules:
             schedule_state = state_by_id.get(production_schedule.id)
             if not schedule_state:
                 continue
 
-            is_never = production_schedule.replenish_trigger == 'never'
+            is_never      = production_schedule.replenish_trigger == 'never'
+            has_mfg_route = self._mps_has_manufacture_route(production_schedule)
 
-            # ── BOM + route detection (runs for ALL schedules) ────────────────
-            # Routing is determined entirely by the product's BOM type and stock
-            # routes.  replenish_trigger='never' is no longer required — the
-            # button press itself triggers this logic every time.
-            #
-            # Decision tree:
-            #   Normal BOM + NO Manufacture route  →  explode BOM, buy components
-            #   Normal BOM + Manufacture route      →  normal engine creates MO
-            #   Phantom/kit BOM                     →  explode into components
-            #   No BOM                              →  direct PR for product
-            #
-            # The is_never flag is kept for backward-compatibility log messages
-            # only; it does NOT gate the BOM-detection logic any more.
-            has_manufacture_bom_buy = False
-            manufacture_bom_for_buy = None
+            _logger.info(
+                "[MPS All-Periods] Schedule %s (%s): "
+                "trigger=%s  has_mfg_route=%s",
+                production_schedule.product_id.display_name,
+                production_schedule.id,
+                production_schedule.replenish_trigger,
+                has_mfg_route,
+            )
 
-            candidate_bom = self.env['mrp.bom']._bom_find(
-                production_schedule.product_id,
-                company_id=production_schedule.company_id.id,
-                bom_type='normal',
-            )[production_schedule.product_id]
-            if candidate_bom:
-                product_routes = (
-                    list(production_schedule.product_id.route_ids)
-                    + list(production_schedule.product_id.categ_id.route_ids)
-                )
-                has_mfg_route = any(
-                    'manufactur' in (r.name or '').lower()
-                    or 'fabricat' in (r.name or '').lower()
-                    for r in product_routes
-                )
-                if not has_mfg_route:
-                    # No manufacture route → buy components instead of creating MO
-                    has_manufacture_bom_buy = True
-                    manufacture_bom_for_buy = candidate_bom
+            # ── Determine routing path ────────────────────────────────────────
+            #
+            # PATH A — Manufacture route AND trigger != 'never'
+            #   → Explode BOM → component RFQs (handled inline per period)
+            #
+            # PATH B — trigger='never' (any route, as long as a normal BOM exists)
+            #   → Explode BOM → component RFQs (same as A, just no MO created)
+            #   → If no BOM found, falls through to PATH D (buy the FG directly)
+            #
+            # PATH C — Phantom / kit BOM, no manufacture route
+            #   → Explode phantom BOM → component RFQs via accumulator
+            #
+            # PATH D — Standard buy-route FG (no manufacture route, no phantom)
+            #   → RFQ for the FG itself via accumulator
+
+            use_bom_explosion = False    # True for PATH A and PATH B
+            bom_for_explosion = None
+
+            if has_mfg_route and not is_never:
+                # PATH A
+                bom_for_explosion = self.env['mrp.bom']._bom_find(
+                    production_schedule.product_id,
+                    company_id=production_schedule.company_id.id,
+                    bom_type='normal',
+                )[production_schedule.product_id]
+
+                if bom_for_explosion:
+                    use_bom_explosion = True
                     _logger.info(
-                        "[MPS All-Periods] %s — normal BOM found, no manufacture "
-                        "route → will explode BOM and create component PRs "
-                        "(trigger=%s).",
+                        "[MPS All-Periods] PATH A — %s: Manufacture route. "
+                        "BOM will be exploded; component RFQs will be created.",
                         production_schedule.product_id.display_name,
-                        production_schedule.replenish_trigger,
+                    )
+                else:
+                    _logger.warning(
+                        "[MPS All-Periods] %s has Manufacture route but no "
+                        "normal BOM — falling back to PATH D (RFQ for FG).",
+                        production_schedule.product_id.display_name,
                     )
 
-            # ── Phantom / kit BOM detection ───────────────────────────────────
-            phantom_bom = None
+            elif is_never:
+                # PATH B
+                bom_for_explosion = self.env['mrp.bom']._bom_find(
+                    production_schedule.product_id,
+                    company_id=production_schedule.company_id.id,
+                    bom_type='normal',
+                )[production_schedule.product_id]
+
+                if bom_for_explosion:
+                    use_bom_explosion = True
+                    _logger.info(
+                        "[MPS All-Periods] PATH B — %s: trigger='never'. "
+                        "BOM exploded; component RFQs only, no MO.",
+                        production_schedule.product_id.display_name,
+                    )
+                else:
+                    _logger.info(
+                        "[MPS All-Periods] PATH B — %s: trigger='never' but "
+                        "no normal BOM — falling back to PATH D.",
+                        production_schedule.product_id.display_name,
+                    )
+
+            # ── Phantom BOM (PATH C) ──────────────────────────────────────────
+            phantom_bom           = None
             phantom_product_ratio = []
-            if not has_manufacture_bom_buy:
+
+            if not use_bom_explosion:
                 phantom_bom = self.env['mrp.bom']._bom_find(
                     production_schedule.product_id,
                     company_id=production_schedule.company_id.id,
@@ -1087,25 +1180,26 @@ class MrpProductionScheduleAllPeriods(models.Model):
                     _dummy, bom_lines = phantom_bom.explode(
                         production_schedule.product_id, 1
                     )
-                    component_ids = [l[0].product_id.id for l in bom_lines]
-                    scheduled_ids = self.env['mrp.production.schedule'].search([
+                    comp_ids  = [l[0].product_id.id for l in bom_lines]
+                    sched_ids = self.env['mrp.production.schedule'].search([
                         ('company_id',   '=', production_schedule.company_id.id),
                         ('warehouse_id', '=', production_schedule.warehouse_id.id),
-                        ('product_id',   'in', component_ids),
+                        ('product_id',   'in', comp_ids),
                     ]).product_id.ids
                     phantom_product_ratio = [
                         (l[0], l[0].product_qty * l[1]['qty'])
                         for l in bom_lines
-                        if l[0].product_id.id not in scheduled_ids
+                        if l[0].product_id.id not in sched_ids
                     ]
+                    _logger.info(
+                        "[MPS All-Periods] PATH C — %s: phantom BOM with "
+                        "%d unscheduled components.",
+                        production_schedule.product_id.display_name,
+                        len(phantom_product_ratio),
+                    )
 
-            # ── Build stock coverage for this schedule (BUG 4 / 5 fix) ───────
-            #
-            # For products whose BOM will be exploded into components we do NOT
-            # need coverage on the finished good itself (no PR is created for
-            # it); coverage is checked per component inside the accumulator.
-            skip_fg_coverage = has_manufacture_bom_buy
-            if not skip_fg_coverage:
+            # ── Stock coverage for non-BOM-exploded FG products ───────────────
+            if not use_bom_explosion:
                 on_hand = production_schedule._mps_get_on_hand_qty(
                     production_schedule.product_id,
                     production_schedule.company_id,
@@ -1122,22 +1216,25 @@ class MrpProductionScheduleAllPeriods(models.Model):
                     production_schedule.warehouse_id,
                 )
                 _logger.info(
-                    "[MPS All-Periods] Coverage for %s — on_hand=%.4f  "
-                    "open_po_months=%s  open_mo_months=%s",
+                    "[MPS All-Periods] FG coverage for %s — on_hand=%.4f  "
+                    "open_po=%s  open_mo=%s",
                     production_schedule.product_id.display_name,
-                    on_hand,
-                    list(open_po_by_month.keys()),
+                    on_hand, list(open_po_by_month.keys()),
                     list(open_mo_by_month.keys()),
                 )
             else:
-                on_hand = 0.0
+                on_hand          = 0.0
                 open_po_by_month = {}
                 open_mo_by_month = {}
 
-            # Running balance: starts at on-hand, grows with incoming supply
             available_balance = on_hand
 
-            # ── Sort periods ascending so on-hand is consumed earliest-first ──
+            # ── Initialise per-schedule component coverage state ──────────────
+            if production_schedule.id not in schedule_comp_coverage:
+                schedule_comp_coverage[production_schedule.id] = {}
+            comp_coverage_state = schedule_comp_coverage[production_schedule.id]
+
+            # ── Sort periods ascending so earlier periods consume balance first ─
             sorted_forecast_ids = sorted(
                 schedule_state.get('forecast_ids', []),
                 key=lambda d: (
@@ -1147,6 +1244,7 @@ class MrpProductionScheduleAllPeriods(models.Model):
                 )
             )
 
+            # ── Per-period processing ─────────────────────────────────────────
             for forecast_dict in sorted_forecast_ids:
 
                 extra_forecast = dict(forecast_dict)
@@ -1168,128 +1266,114 @@ class MrpProductionScheduleAllPeriods(models.Model):
                 forecasted_on_hand = extra_forecast.get('forecasted_qty_0', 0.0) or 0.0
 
                 date_start = extra_forecast['date_start']
-                if isinstance(date_start, date_type) and not isinstance(date_start, datetime):
-                    year, month = date_start.year, date_start.month
-                else:
-                    year, month = date_start.year, date_start.month
+                date_stop  = extra_forecast['date_stop']
+                year, month = date_start.year, date_start.month
+                period_key  = (year, month)
 
-                period_key = (year, month)
-
-                # ── Apply running available balance (BUG 4 / 5 fix) ──────────
-                if not skip_fg_coverage:
-                    po_arriving   = open_po_by_month.get(period_key, 0.0)
-                    mo_arriving   = open_mo_by_month.get(period_key, 0.0)
+                # ── FG-level stock coverage (PATH C / PATH D only) ────────────
+                if not use_bom_explosion:
+                    po_arriving       = open_po_by_month.get(period_key, 0.0)
+                    mo_arriving       = open_mo_by_month.get(period_key, 0.0)
                     available_balance += po_arriving + mo_arriving
 
-                    net_required = max(0.0, outstanding_qty - available_balance)
+                    net_required      = max(0.0, outstanding_qty - available_balance)
                     available_balance = max(0.0, available_balance - outstanding_qty)
 
                     _logger.info(
-                        "[MPS All-Periods] %s [trigger=%s]  period %s-%02d : "
+                        "[MPS All-Periods] %s [trigger=%s]  period %d-%02d : "
                         "replenish=%.2f  incoming(MPS)=%.2f  outstanding=%.2f  "
-                        "po_arriving=%.2f  mo_arriving=%.2f  balance_before=%.2f  "
-                        "net_required=%.2f  balance_after=%.2f",
+                        "po_arriving=%.2f  mo_arriving=%.2f  net_required=%.2f  "
+                        "balance_after=%.2f",
                         production_schedule.product_id.display_name,
                         production_schedule.replenish_trigger,
                         year, month,
                         replenish_qty, incoming_qty, outstanding_qty,
-                        po_arriving, mo_arriving,
-                        available_balance + outstanding_qty - po_arriving - mo_arriving,
-                        net_required,
-                        available_balance,
+                        po_arriving, mo_arriving, net_required, available_balance,
                     )
 
                     if net_required <= 0.0:
                         _logger.info(
-                            "[MPS All-Periods] %s period %s-%02d fully covered "
-                            "by on-hand / open PO / open MO — skipping procurement.",
+                            "[MPS All-Periods] %s period %d-%02d fully covered "
+                            "by on-hand / open PO / open MO — skipping.",
                             production_schedule.product_id.display_name,
                             year, month,
                         )
                         ds = extra_forecast['date_start']
                         de = extra_forecast['date_stop']
-                        existing_forecasts = production_schedule.forecast_ids.filtered(
+                        existing_f = production_schedule.forecast_ids.filtered(
                             lambda f, ds=ds, de=de: f.date >= ds and f.date <= de
                         )
-                        if existing_forecasts:
-                            forecasts_to_set_as_launched |= existing_forecasts
+                        if existing_f:
+                            forecasts_to_set_as_launched |= existing_f
                         else:
                             forecasts_values.append({
-                                'forecast_qty': 0,
-                                'date': de,
-                                'procurement_launched': True,
+                                'forecast_qty':           0,
+                                'date':                   de,
+                                'procurement_launched':   True,
                                 'production_schedule_id': production_schedule.id,
                             })
                         continue
 
                     outstanding_qty = net_required
 
-                else:
-                    # BOM-explode path: pass the full outstanding_qty through to
-                    # BOM explosion. Coverage is applied per component inside the
-                    # accumulator merge below.
-                    _logger.info(
-                        "[MPS All-Periods] %s [trigger=%s / bom-buy=%s]  period %s-%02d : "
-                        "replenish=%.2f  incoming(MPS)=%.2f  outstanding=%.2f  "
-                        "(coverage applied per component in accumulator)",
-                        production_schedule.product_id.display_name,
-                        production_schedule.replenish_trigger,
-                        has_manufacture_bom_buy,
-                        year, month,
-                        replenish_qty, incoming_qty, outstanding_qty,
-                    )
-
-                extra_values = production_schedule._get_procurement_extra_values(
-                    extra_forecast
+                origin_str = production_schedule._mps_get_replenishment_origin(
+                    date_start, date_stop
                 )
 
-                if has_manufacture_bom_buy:
-                    # ── Explode normal BOM into raw component qtys ────────────
-                    # This path runs for ALL products that have a normal BOM but
-                    # no Manufacture route — regardless of replenish_trigger.
-                    raw_components = []
-                    _dummy, bom_lines = manufacture_bom_for_buy.explode(
-                        production_schedule.product_id, outstanding_qty
+                # ═════════════════════════════════════════════════════════════
+                # PATH A / B — BOM EXPLOSION → component RFQ line specs
+                # ═════════════════════════════════════════════════════════════
+                if use_bom_explosion:
+                    _logger.info(
+                        "[MPS All-Periods] %s period %d-%02d : exploding BOM "
+                        "(qty=%.4f) for component RFQs.",
+                        production_schedule.product_id.display_name,
+                        year, month, outstanding_qty,
                     )
-                    all_comp_ids = [l[0].product_id.id for l in bom_lines]
-                    already_sched = self.env['mrp.production.schedule'].search([
-                        ('company_id',   '=', production_schedule.company_id.id),
-                        ('warehouse_id', '=', production_schedule.warehouse_id.id),
-                        ('product_id',   'in', all_comp_ids),
-                    ]).product_id.ids
-                    for bom_line, line_data in bom_lines:
-                        comp = bom_line.product_id
-                        if comp.id in already_sched:
-                            continue
-                        comp_route = self._mps_get_component_route(comp)
-                        comp_vals  = dict(extra_values)
-                        if comp_route:
-                            comp_vals['route_ids'] = comp_route
-                        else:
-                            comp_vals.pop('route_ids', None)
-                        comp_vals.pop('supplierinfo_id', None)
-                        raw_components.append({
-                            'product':      comp,
-                            'raw_qty':      line_data['qty'],
-                            'uom_id':       bom_line.product_uom_id,
-                            'extra_values': comp_vals,
-                            'company':      production_schedule.company_id,
+                    line_specs = production_schedule._mps_build_component_rfq_lines_from_bom(
+                        product=production_schedule.product_id,
+                        qty=outstanding_qty,
+                        uom=production_schedule.product_uom_id,
+                        date_start=date_start,
+                        date_stop=date_stop,
+                        company=production_schedule.company_id,
+                        warehouse=production_schedule.warehouse_id,
+                        comp_coverage_state=comp_coverage_state,
+                    )
+                    all_rfq_line_specs.extend(line_specs)
+
+                    ds = extra_forecast['date_start']
+                    de = extra_forecast['date_stop']
+                    existing_f = production_schedule.forecast_ids.filtered(
+                        lambda f, ds=ds, de=de: f.date >= ds and f.date <= de
+                    )
+                    if existing_f:
+                        forecasts_to_set_as_launched |= existing_f
+                    else:
+                        forecasts_values.append({
+                            'forecast_qty':           0,
+                            'date':                   de,
+                            'procurement_launched':   True,
+                            'production_schedule_id': production_schedule.id,
                         })
+                    continue  # ← do NOT enter accumulator for this period
 
-                    for comp_data in raw_components:
-                        comp_product = comp_data['product']
-
-                        comp_acc_key = (
+                # ═════════════════════════════════════════════════════════════
+                # PATH C — PHANTOM BOM → component accumulator entries
+                # ═════════════════════════════════════════════════════════════
+                elif phantom_bom:
+                    for bom_line, qty_ratio in phantom_product_ratio:
+                        comp_product = bom_line.product_id
+                        raw_comp_qty = outstanding_qty * qty_ratio
+                        acc_key = (
                             comp_product.id,
                             production_schedule.company_id.id,
-                            production_schedule.warehouse_id.id if production_schedule.warehouse_id else False,
-                            year,
-                            month,
+                            production_schedule.warehouse_id.id
+                            if production_schedule.warehouse_id else False,
+                            year, month,
                         )
-
-                        if comp_acc_key not in raw_qty_accumulator:
-                            # Build coverage for this component now (queried once)
-                            comp_on_hand = production_schedule._mps_get_on_hand_qty(
+                        if acc_key not in raw_qty_accumulator:
+                            comp_on_hand     = production_schedule._mps_get_on_hand_qty(
                                 comp_product,
                                 production_schedule.company_id,
                                 production_schedule.warehouse_id,
@@ -1299,62 +1383,31 @@ class MrpProductionScheduleAllPeriods(models.Model):
                                 production_schedule.company_id,
                                 production_schedule.warehouse_id,
                             )
-                            raw_qty_accumulator[comp_acc_key] = {
-                                'product':            comp_product,
-                                'raw_qty':            comp_data['raw_qty'],
-                                'forecasted_on_hand': 0.0,
-                                'uom_id':             comp_data['uom_id'],
-                                'extra_values':       comp_data['extra_values'],
-                                'company':            comp_data['company'],
-                                'schedule':           production_schedule,
-                                # coverage fields applied before safety stock
-                                '_comp_on_hand':      comp_on_hand,
-                                '_comp_po_by_month':  comp_po_by_month,
-                            }
-                        else:
-                            raw_qty_accumulator[comp_acc_key]['raw_qty'] += comp_data['raw_qty']
-                            _logger.info(
-                                '[MPS All-Periods] Accumulator merge (BOM-explode): '
-                                '%s  accumulated_raw_qty=%.4f (added %.4f from %s)',
-                                comp_product.display_name,
-                                raw_qty_accumulator[comp_acc_key]['raw_qty'],
-                                comp_data['raw_qty'],
-                                production_schedule.product_id.display_name,
-                            )
-
-                elif phantom_bom:
-                    for bom_line, qty_ratio in phantom_product_ratio:
-                        comp_product = bom_line.product_id
-                        raw_comp_qty = outstanding_qty * qty_ratio
-                        acc_key = (
-                            comp_product.id,
-                            production_schedule.company_id.id,
-                            production_schedule.warehouse_id.id if production_schedule.warehouse_id else False,
-                            year,
-                            month,
-                        )
-                        if acc_key not in raw_qty_accumulator:
-                            comp_values = dict(extra_values)
                             raw_qty_accumulator[acc_key] = {
                                 'product':            comp_product,
                                 'raw_qty':            raw_comp_qty,
                                 'forecasted_on_hand': 0.0,
                                 'uom_id':             bom_line.product_uom_id,
-                                'extra_values':       comp_values,
                                 'company':            production_schedule.company_id,
+                                'warehouse':          production_schedule.warehouse_id,
                                 'schedule':           production_schedule,
+                                '_is_component':      True,
+                                '_comp_on_hand':      comp_on_hand,
+                                '_comp_po_by_month':  comp_po_by_month,
                             }
                         else:
                             raw_qty_accumulator[acc_key]['raw_qty'] += raw_comp_qty
 
+                # ═════════════════════════════════════════════════════════════
+                # PATH D — STANDARD BUY-ROUTE FG → accumulator
+                # ═════════════════════════════════════════════════════════════
                 else:
-                    # Normal (non-phantom, non-never) schedule.
                     acc_key = (
                         production_schedule.product_id.id,
                         production_schedule.company_id.id,
-                        production_schedule.warehouse_id.id if production_schedule.warehouse_id else False,
-                        year,
-                        month,
+                        production_schedule.warehouse_id.id
+                        if production_schedule.warehouse_id else False,
+                        year, month,
                     )
                     if acc_key not in raw_qty_accumulator:
                         raw_qty_accumulator[acc_key] = {
@@ -1362,9 +1415,10 @@ class MrpProductionScheduleAllPeriods(models.Model):
                             'raw_qty':            outstanding_qty,
                             'forecasted_on_hand': forecasted_on_hand,
                             'uom_id':             production_schedule.product_uom_id,
-                            'extra_values':       extra_values,
                             'company':            production_schedule.company_id,
+                            'warehouse':          production_schedule.warehouse_id,
                             'schedule':           production_schedule,
+                            '_is_component':      False,
                         }
                     else:
                         raw_qty_accumulator[acc_key]['raw_qty'] += outstanding_qty
@@ -1373,74 +1427,36 @@ class MrpProductionScheduleAllPeriods(models.Model):
                             forecasted_on_hand,
                         )
 
-                # ── Collect forecast records to mark as launched (deferred) ───
-                # We store them against the accumulator key so the surplus pass
-                # can still mark them even when no PR is created for that month.
+                # ── Deferred forecast-launched tracking for accumulator entries ─
                 ds = extra_forecast['date_start']
                 de = extra_forecast['date_stop']
-
-                # Determine the acc_key that was just written/updated above.
-                # For component paths the last written key is comp_acc_key (set
-                # inside the for-loop above); for the normal/phantom paths it is
-                # the acc_key local variable.  We resolve by reading back from
-                # the accumulator — the simplest approach is to tag the entry.
-                # Instead we just store the forecast info directly keyed by
-                # (production_schedule.id, year, month) and resolve later.
-                fcast_tracking_key = (production_schedule.id, year, month)
-                existing_forecasts = production_schedule.forecast_ids.filtered(
-                    lambda f, ds=ds, de=de: f.date >= ds and f.date <= de
-                )
-
-                if fcast_tracking_key not in acc_key_to_forecast_records:
-                    acc_key_to_forecast_records[fcast_tracking_key] = (
-                        production_schedule, ds, de, existing_forecasts
+                fcast_key = (production_schedule.id, year, month)
+                if fcast_key not in acc_key_to_forecast_records:
+                    existing_f = production_schedule.forecast_ids.filtered(
+                        lambda f, ds=ds, de=de: f.date >= ds and f.date <= de
+                    )
+                    acc_key_to_forecast_records[fcast_key] = (
+                        production_schedule, ds, de, existing_f
                     )
 
-        # =========================================================================
+        # =====================================================================
         # PRE-PASS: apply component on-hand / confirmed-PO coverage
-        # =========================================================================
-        # For BOM-exploded components the accumulator holds the full exploded
-        # raw_qty across ALL finished-good periods.  Before the surplus carry
-        # can work correctly we must deduct existing on-hand stock and confirmed
-        # incoming POs from the raw_qty in each accumulator entry.
-        #
-        # ORDERING MATTERS:
-        #   raw_qty (exploded)
-        #     → minus on_hand + confirmed POs  (this pre-pass)
-        #     → minus usable surplus from prior months  (surplus carry pass)
-        #     → plus safety_stock + MOQ rounding  (final procurement creation)
-        #
-        # Doing coverage AFTER the surplus carry (old code) meant the surplus
-        # calculated in month N was based on inflated raw_qty that hadn't yet
-        # had on_hand deducted, so the carry-forward was wrong.
-        #
-        # Coverage uses a running balance per component (same product/company/
-        # warehouse), sorted ascending by month, so on-hand covers the earliest
-        # period first — exactly like the FG coverage logic above.
-        # =========================================================================
+        # =====================================================================
 
-        # Group component accumulator entries by (product_id, company_id, warehouse_id)
-        # to build a per-product running balance across months.
-        from collections import defaultdict
-
-        # First: apply on_hand / PO deduction per component, using a running
-        # available balance across months (earliest first).
         comp_group_keys = defaultdict(list)
         for acc_key, acc in raw_qty_accumulator.items():
-            if '_comp_on_hand' in acc:   # only BOM-exploded component entries
+            if '_comp_on_hand' in acc:
                 product_id, company_id, warehouse_id, year, month = acc_key
                 comp_group_keys[(product_id, company_id, warehouse_id)].append(acc_key)
 
         for group_sig, keys in comp_group_keys.items():
-            keys.sort(key=lambda k: (k[3], k[4]))   # ascending by (year, month)
+            keys.sort(key=lambda k: (k[3], k[4]))
 
-            # Fetch coverage data from the first entry in the group
-            first_acc = raw_qty_accumulator[keys[0]]
+            first_acc        = raw_qty_accumulator[keys[0]]
             comp_on_hand     = first_acc.get('_comp_on_hand',     0.0) or 0.0
             comp_po_by_month = first_acc.get('_comp_po_by_month', {})  or {}
-
-            # Running available balance (mirrors FG coverage logic)
-            available = comp_on_hand
+            available        = comp_on_hand
+            component_safety_considered = False
 
             for acc_key in keys:
                 acc = raw_qty_accumulator[acc_key]
@@ -1448,258 +1464,227 @@ class MrpProductionScheduleAllPeriods(models.Model):
 
                 po_arriving = comp_po_by_month.get((year, month), 0.0)
                 available  += po_arriving
+                raw_before  = acc['raw_qty']
 
-                raw_before   = acc['raw_qty']
-                net_after    = max(0.0, raw_before - available)
-                consumed     = raw_before - net_after          # how much balance absorbed
-                available    = max(0.0, available - raw_before)
+                tmpl                   = acc['product'].product_tmpl_id
+                component_safety_stock = (
+                    tmpl._get_safety_stock()
+                    if (
+                        not component_safety_considered
+                        and hasattr(tmpl, '_get_safety_stock')
+                    ) else 0.0
+                )
+                component_safety_considered = True
+                net_after  = max(0.0, raw_before + component_safety_stock - available)
+                available  = max(0.0, available + net_after - raw_before)
 
                 _logger.info(
                     "[MPS Pre-Coverage] Component %s period %d-%02d : "
-                    "raw=%.4f  on_hand_balance=%.4f  po_arriving=%.4f  "
+                    "raw=%.4f  safety_stock=%.4f  po_arriving=%.4f  "
                     "net=%.4f  balance_after=%.4f",
-                    acc['product'].display_name,
-                    year, month,
-                    raw_before, comp_on_hand if acc_key == keys[0] else 0.0,
-                    po_arriving, net_after, available,
+                    acc['product'].display_name, year, month,
+                    raw_before, component_safety_stock, po_arriving,
+                    net_after, available,
                 )
 
-                # Replace raw_qty with coverage-adjusted value BEFORE surplus carry
                 acc['raw_qty'] = net_after
-
-                # Remove the coverage fields — they've been applied now
                 acc.pop('_comp_on_hand',     None)
                 acc.pop('_comp_po_by_month', None)
 
-                if net_after <= 0.0:
-                    _logger.info(
-                        "[MPS Pre-Coverage] Component %s period %d-%02d fully "
-                        "covered by on-hand/PO — will be skipped.",
-                        acc['product'].display_name, year, month,
-                    )
-
-        # =========================================================================
-        # SURPLUS CARRY-FORWARD PASS (BUG 6 + BUG 7 FIX)
-        # =========================================================================
-        # Group accumulator entries by (product_id, company_id, warehouse_id),
-        # then iterate months in ascending order, carrying the surplus from
-        # MOQ/safety-stock rounding forward so later months are not over-ordered.
-        # Safety stock is PROTECTED — only surplus ABOVE safety_stock is usable.
-        #
-        # Correct pipeline (all three passes now in order):
-        #   raw_qty  →  [pre-coverage: on_hand/PO]
-        #            →  [surplus carry: usable = surplus − safety]
-        #            →  [MOQ loop: add safety + round to MOQ]  →  PR
-        # =========================================================================
-
-        # Step 1: group keys by (product_id, company_id, warehouse_id)
+        # =====================================================================
+        # SURPLUS CARRY-FORWARD PASS (safety-stock protected)
+        # =====================================================================
 
         product_group_keys = defaultdict(list)
         for acc_key in list(raw_qty_accumulator.keys()):
             product_id, company_id, warehouse_id, year, month = acc_key
-            group_sig = (product_id, company_id, warehouse_id)
-            product_group_keys[group_sig].append(acc_key)
+            product_group_keys[(product_id, company_id, warehouse_id)].append(acc_key)
 
-        # Step 2: for each product group, sort by month and apply surplus carry
-        # with safety-stock protection (BUG 7 FIX).
-        #
-        # Safety stock is PROTECTED inventory.  Only stock ABOVE the safety
-        # stock threshold may be treated as usable carry-forward surplus.
-        #
-        #   usable_surplus  = max(0, surplus − safety_stock)
-        #   net_need        = max(0, raw_qty − usable_surplus)
-        #   ordered_qty     = _mps_adjust_procurement_qty(net_need)
-        #   surplus         = ordered_qty − net_need    ← carry to next month
-        #
-        # The surplus variable tracks the total projected stock above zero;
-        # subtracting safety_stock before offsetting demand ensures we never
-        # draw the protected buffer down to meet future demand.
-        keys_to_skip = set()   # accumulator keys where net_need == 0 after surplus
+        keys_to_skip = set()
 
         for group_sig, keys_in_group in product_group_keys.items():
-            # Sort ascending by (year, month)
             keys_in_group.sort(key=lambda k: (k[3], k[4]))
+            first_acc    = raw_qty_accumulator[keys_in_group[0]]
+            is_component = first_acc.get('_is_component', False)
+            tmpl_check   = first_acc['product'].product_tmpl_id
+            ss_check     = (
+                0.0 if is_component else
+                (tmpl_check._get_safety_stock() if hasattr(tmpl_check, '_get_safety_stock') else 0.0)
+            )
+            moq_check    = (
+                tmpl_check._get_minimum_order_qty()
+                if hasattr(tmpl_check, '_get_minimum_order_qty') else 0.0
+            )
 
-            surplus = 0.0
+            if not (ss_check > 0.0 or moq_check > 0.0):
+                continue
+
+            projected_balance = (
+                0.0 if is_component
+                else first_acc.get('forecasted_on_hand', 0.0) or 0.0
+            )
+
             for acc_key in keys_in_group:
                 acc = raw_qty_accumulator[acc_key]
                 product_id, company_id, warehouse_id, year, month = acc_key
+                tmpl         = acc['product'].product_tmpl_id
+                raw_qty      = acc['raw_qty']
+                safety_stock = (
+                    tmpl._get_safety_stock() if hasattr(tmpl, '_get_safety_stock') else 0.0
+                )
 
-                # Fetch safety stock for this product (0.0 if not configured)
-                tmpl = acc['product'].product_tmpl_id
-                safety_stock = tmpl._get_safety_stock() if hasattr(tmpl, '_get_safety_stock') else 0.0
-
-                raw_qty       = acc['raw_qty']
-                usable_surplus = max(0.0, surplus - safety_stock)
-                net_need       = max(0.0, raw_qty - usable_surplus)
-
-                if net_need <= 0.0:
-                    _logger.info(
-                        "[MPS Surplus Carry] %s period %d-%02d : "
-                        "raw_qty=%.4f  projected_balance=%.4f  safety_stock=%.4f  "
-                        "usable_surplus=%.4f  net_need_before_moq=0 → SKIPPING (fully covered)",
-                        acc['product'].display_name,
-                        year, month,
-                        raw_qty, surplus, safety_stock, usable_surplus,
-                    )
-                    # Surplus is reduced by the demand it just absorbed
-                    surplus = max(0.0, surplus - raw_qty)
+                if projected_balance >= raw_qty + safety_stock:
+                    projected_balance = projected_balance - raw_qty
                     keys_to_skip.add(acc_key)
+                    _logger.info(
+                        "[MPS Surplus Carry] %s period %d-%02d : SKIPPED "
+                        "(balance %.4f ≥ demand %.4f + safety %.4f)",
+                        acc['product'].display_name, year, month,
+                        projected_balance + raw_qty, raw_qty, safety_stock,
+                    )
                     continue
 
-                # Compute what MOQ/safety will order for this net_need
-                adjusted_qty = acc['schedule']._mps_adjust_procurement_qty(
-                    acc['product'],
-                    net_need,
-                    acc['forecasted_on_hand'],
-                )
-                new_surplus = max(0.0, adjusted_qty - net_need)
+                usable_surplus = max(0.0, projected_balance - safety_stock)
+                net_need       = max(0.0, raw_qty - usable_surplus)
+                eff_on_hand    = projected_balance
+
+                if is_component:
+                    moq_c = (
+                        tmpl._get_minimum_order_qty()
+                        if hasattr(tmpl, '_get_minimum_order_qty') else 0.0
+                    )
+                    adjusted_qty = (
+                        math.ceil(net_need / moq_c) * moq_c
+                        if moq_c and moq_c > 0.0 and net_need > 0.0
+                        else net_need
+                    )
+                else:
+                    adjusted_qty = acc['schedule']._mps_adjust_procurement_qty(
+                        acc['product'],
+                        net_need,
+                        eff_on_hand,
+                        apply_safety=(acc_key == keys_in_group[0]),
+                    )
+
+                consumed          = min(raw_qty, projected_balance)
+                projected_balance = projected_balance - consumed + adjusted_qty
 
                 _logger.info(
                     "[MPS Surplus Carry] %s period %d-%02d : "
-                    "raw_qty=%.4f  projected_balance=%.4f  safety_stock=%.4f  "
-                    "usable_surplus=%.4f  net_need_before_moq=%.4f  "
-                    "ordered_qty=%.4f  carried_surplus=%.4f",
-                    acc['product'].display_name,
-                    year, month,
-                    raw_qty, surplus, safety_stock,
-                    usable_surplus, net_need,
-                    adjusted_qty, new_surplus,
+                    "raw=%.4f  balance=%.4f  safety=%.4f  usable=%.4f  "
+                    "net=%.4f  ordered=%.4f  new_balance=%.4f",
+                    acc['product'].display_name, year, month,
+                    raw_qty, eff_on_hand, safety_stock, usable_surplus,
+                    net_need, adjusted_qty, projected_balance,
                 )
+                acc['raw_qty'] = adjusted_qty
+                acc['_procurement_qty_rules_applied'] = True
 
-                # Update raw_qty in the accumulator so the MOQ loop below
-                # operates on the reduced (surplus-adjusted) quantity.
-                acc['raw_qty'] = net_need
-                surplus = new_surplus
+        # =====================================================================
+        # Finalise accumulator → build RFQ line specs
+        # =====================================================================
 
-        # =========================================================================
-        # Apply safety_stock + MOQ ONCE per accumulator key
-        # (skipping months that are fully covered by carry-forward surplus)
-        # =========================================================================
         for acc_key, acc in raw_qty_accumulator.items():
+            product_id, company_id, warehouse_id, year, month = acc_key
 
             if acc_key in keys_to_skip:
-                # Month is fully covered by surplus from a previous month's order.
-                # Mark the corresponding forecast records as launched so MPS shows
-                # the correct state, but do NOT create a PR.
-                product_id, company_id, warehouse_id, year, month = acc_key
                 _logger.info(
-                    "[MPS All-Periods] %s period %d-%02d skipped by surplus carry — "
-                    "marking forecast as launched without creating PR.",
+                    "[MPS All-Periods] %s period %d-%02d skipped by surplus "
+                    "carry — marking forecast launched.",
                     acc['product'].display_name, year, month,
                 )
-                # Find and mark matching forecast records
                 fcast_key = (acc['schedule'].id, year, month)
                 if fcast_key in acc_key_to_forecast_records:
-                    sched, ds, de, existing_forecasts = acc_key_to_forecast_records[fcast_key]
-                    if existing_forecasts:
-                        forecasts_to_set_as_launched |= existing_forecasts
+                    sched, ds, de, existing_f = acc_key_to_forecast_records[fcast_key]
+                    if existing_f:
+                        forecasts_to_set_as_launched |= existing_f
                     else:
                         forecasts_values.append({
-                            'forecast_qty': 0,
-                            'date': de,
-                            'procurement_launched': True,
+                            'forecast_qty':           0,
+                            'date':                   de,
+                            'procurement_launched':   True,
                             'production_schedule_id': sched.id,
                         })
                 continue
 
-            # Component coverage has already been applied in the pre-pass above.
-            # acc['raw_qty'] is already the net need after on_hand / confirmed POs.
-            # If it is 0 or less, the period is fully covered — skip it.
             if acc['raw_qty'] <= 0.0:
-                product_id, company_id, warehouse_id, year, month = acc_key
                 _logger.info(
-                    "[MPS All-Periods] Component %s period %d-%02d fully covered "
-                    "by on-hand/PO (pre-coverage pass) — skipping.",
+                    "[MPS All-Periods] %s period %d-%02d fully covered — skip.",
                     acc['product'].display_name, year, month,
                 )
                 continue
 
-            adjusted_qty = acc['schedule']._mps_adjust_procurement_qty(
-                acc['product'],
-                acc['raw_qty'],
-                acc['forecasted_on_hand'],
-            )
-            _logger.info(
-                "[MPS All-Periods] FINAL qty for %s  period=%s-%02d : "
-                "raw_qty=%.4f → adjusted=%.4f  (on_hand=%.4f)",
-                acc['product'].display_name,
-                acc_key[3],
-                acc_key[4],
-                acc['raw_qty'],
-                adjusted_qty,
-                acc['forecasted_on_hand'],
-            )
-            procurements.append(
-                self.env['procurement.group'].Procurement(
-                    acc['product'],
-                    adjusted_qty,
-                    acc['uom_id'],
-                    acc['schedule'].warehouse_id.lot_stock_id,
-                    acc['product'].name,
-                    'MPS',
-                    acc['company'],
-                    acc['extra_values'],
+            eff_on_hand  = acc.get('_projected_on_hand', acc.get('forecasted_on_hand', 0.0))
+            is_component = acc.get('_is_component', False)
+
+            if acc.get('_procurement_qty_rules_applied'):
+                adjusted_qty = acc['raw_qty']
+            elif is_component:
+                moq_c = (
+                    acc['product'].product_tmpl_id._get_minimum_order_qty()
+                    if hasattr(acc['product'].product_tmpl_id, '_get_minimum_order_qty') else 0.0
                 )
+                adjusted_qty = (
+                    math.ceil(acc['raw_qty'] / moq_c) * moq_c
+                    if moq_c and moq_c > 0.0 and acc['raw_qty'] > 0.0
+                    else acc['raw_qty']
+                )
+            else:
+                group_key = (product_id, company_id, warehouse_id)
+                first_key = product_group_keys.get(group_key, [acc_key])[0]
+                adjusted_qty = acc['schedule']._mps_adjust_procurement_qty(
+                    acc['product'],
+                    acc['raw_qty'],
+                    eff_on_hand,
+                    apply_safety=(acc_key == first_key),
+                )
+
+            _logger.info(
+                "[MPS All-Periods] FINAL qty for %s  period=%d-%02d : "
+                "raw=%.4f → adjusted=%.4f  (eff_on_hand=%.4f)%s",
+                acc['product'].display_name, year, month,
+                acc['raw_qty'], adjusted_qty, eff_on_hand,
+                '  [component: MOQ-only]' if is_component else '',
             )
 
-        # ── Mark all forecast records as launched ─────────────────────────────
-        # (includes months skipped by surplus, months with no PR, and months
-        #  that had a PR — all get procurement_launched=True)
-        for fcast_key, (sched, ds, de, existing_forecasts) in acc_key_to_forecast_records.items():
-            if existing_forecasts:
-                forecasts_to_set_as_launched |= existing_forecasts
+            all_rfq_line_specs.append({
+                'product':     acc['product'],
+                'qty':         adjusted_qty,
+                'uom':         acc['uom_id'],
+                'company':     acc['company'],
+                'warehouse':   acc['warehouse'],
+                'date_needed': date_type(year, month, 1),
+                'year':        year,
+                'month':       month,
+            })
+
+        # ── Mark accumulator forecast records as launched ─────────────────────
+        for fcast_key, (sched, ds, de, existing_f) in acc_key_to_forecast_records.items():
+            if existing_f:
+                forecasts_to_set_as_launched |= existing_f
             else:
                 forecasts_values.append({
-                    'forecast_qty': 0,
-                    'date': de,
-                    'procurement_launched': True,
+                    'forecast_qty':           0,
+                    'date':                   de,
+                    'procurement_launched':   True,
                     'production_schedule_id': sched.id,
                 })
 
-        if not procurements:
-            _logger.info("[MPS All-Periods] No outstanding procurements to run.")
-            # Still write launched flags even if no PRs were created
+        # ── Nothing to do? ────────────────────────────────────────────────────
+        if not all_rfq_line_specs:
+            _logger.info("[MPS All-Periods] No outstanding lines to order.")
             forecasts_to_set_as_launched.write({'procurement_launched': True})
             if forecasts_values:
                 self.env['mrp.product.forecast'].create(forecasts_values)
             return False
 
-        # ── Split: Buy → PRs  |  everything else → normal engine ─────────────
-        buy_procurements   = []
-        other_procurements = []
-
-        for proc in procurements:
-            if self._mps_is_buy_procurement(proc):
-                buy_procurements.append(proc)
-            else:
-                other_procurements.append(proc)
+        # ── Create RFQs ───────────────────────────────────────────────────────
+        created_rfqs = self._mps_create_rfqs(all_rfq_line_specs)
 
         _logger.info(
-            "[MPS All-Periods] %d buy procurement(s) → PRs  |  "
-            "%d other procurement(s) → engine",
-            len(buy_procurements),
-            len(other_procurements),
+            "[MPS All-Periods] Complete. %d RFQ(s) created: %s",
+            len(created_rfqs), [r.name for r in created_rfqs],
         )
-
-        # ── Create Purchase Requisitions for Buy procurements ─────────────────
-        if buy_procurements:
-            created_prs = self._mps_create_prs_from_buy_procurements(buy_procurements)
-            _logger.info(
-                "[MPS All-Periods] %d PR(s) created: %s",
-                len(created_prs),
-                [pr.name for pr in created_prs],
-            )
-
-        # ── Run Manufacture / other procurements through the normal engine ─────
-        if other_procurements:
-            _logger.info(
-                "[MPS All-Periods] Running %d non-buy procurement(s).",
-                len(other_procurements),
-            )
-            self.env['procurement.group'].with_context(
-                skip_lead_time=True
-            ).run(other_procurements)
 
         # ── Write procurement_launched flags ──────────────────────────────────
         forecasts_to_set_as_launched.write({'procurement_launched': True})
